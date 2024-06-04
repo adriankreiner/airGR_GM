@@ -7,7 +7,6 @@ DataAltiExtrapolation_Valery <- function(DatesR,
   ##Altitudinal_gradient_functions_______________________________________________________________
   ##unique_gradient_for_precipitation
   GradP_Valery2010 <- 0.00041  ### value from Valery PhD thesis page 126
-  # GradP_Valery2010 <- 0.00066  ### value from CHELSA data over Ala Archa from 1990 - 2019
 
 
   ##Format_______________________________________________________________________________________
@@ -45,8 +44,8 @@ DataAltiExtrapolation_Valery <- function(DatesR,
   }
 
 
-  ##Precipitation_extrapolation__________________________________________________________________
-  ##Initialisation
+  #Precipitation_extrapolation__________________________________________________________________
+  #Initialisation
   if (identical(ZInputs, HypsoData[51]) & NLayers == 1) {
     LayerPrecip <- list(as.double(Precip))
   } else {
@@ -78,7 +77,6 @@ DataAltiExtrapolation_Valery <- function(DatesR,
     }
     LayerPrecip <- as.list(as.data.frame(LayerPrecip_mat))
   }
-
 
 
   ##Temperature_extrapolation____________________________________________________________________

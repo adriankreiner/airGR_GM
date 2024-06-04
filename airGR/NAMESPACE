@@ -17,7 +17,6 @@ S3method(SeriesAggreg, InputsModel)
 S3method(SeriesAggreg, OutputsModel)
 
 
-
 #####################################
 ##               Export            ##
 #####################################
@@ -69,6 +68,7 @@ export(TransfoParam_Lag)
 #export(.ErrorCrit)
 #export(.FeatModels)
 export(hello_airGR)
+
 
 
 #####################################

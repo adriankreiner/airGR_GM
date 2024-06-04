@@ -7,7 +7,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
   NStates <- 4L
 
 
-  .ArgumentsCheckGR(InputsModel, RunOptions, Param)
+  c(InputsModel, RunOptions, Param)
 
   Param <- as.double(Param)
 
@@ -86,7 +86,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
       RESULTS$StateEnd[RESULTS$StateEnd <= -99e8] <- NA
 
       ## Data storage
-      CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod2, i])
+      CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod1, i])
       names(CemaNeigeLayers[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
       IndPliqAndMelt <- which(names(CemaNeigeLayers[[iLayer]]) == "PliqAndMelt")
       if (iLayer == 1) {
@@ -107,6 +107,121 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
     CemaNeigeStateEnd <- NULL
     NameCemaNeigeLayers <- NULL
     CatchMeltAndPliq <- InputsModel$Precip[IndPeriod1]
+  }
+  
+  
+  ############################################################################################################################################
+  ## Glacier melt (over all elevation bands)______________________________________________________________________________________ 
+  # if (RunOptions$GlacierModule) {
+  # if (RunOptions$GlacierVersion == 1) {
+  #   # Initialize a list to store ice melt data from each layer
+  #   ice_melts <- list()
+  #   active_layers <- which(RunOptions$RelIce > 0)
+  #   max_layer <- max(active_layers)
+  #   
+  #   for (layer in active_layers[1]:max_layer) {
+  #     # Create the basinObsTS_Glac data frame for the current layer
+  #     basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR,
+  #                                   Ptot = InputsModel$LayerPrecip[[layer]][IndPeriod1],
+  #                                   Temp = InputsModel$LayerTemp[[layer]][IndPeriod1])                    
+  #     
+  #     # Run the SnowGlacier_HBV model
+  #     glacier <- HBV.IANIGLA::SnowGlacier_HBV(model = 1,
+  #                                             inputData = as.matrix(basinObsTS_Glac[, c("Temp", "Ptot")]),
+  #                                             initCond = RunOptions$InitIce,
+  #                                             param = RunOptions$ParamIce)
+  #     
+  #     # Calculate IceMelt for the current layer and multiply by rel_ice
+  #     ice_melt <- data.frame(Date = basinObsTS_Glac$Date, 
+  #                            IceMelt = glacier[, "Mice"] * RunOptions$RelIce[layer])
+  #     
+  #     # Store the result in the list
+  #     ice_melts[[paste0("Layer", layer)]] <- ice_melt
+  #   }
+  #   
+  #   # Combine all IceMelt data from different layers and calculate the total ice melt
+  #   total_ice_melt <- do.call(rbind, ice_melts)
+  #   total_ice_melt <- aggregate(IceMelt ~ Date, data = total_ice_melt, FUN = sum, na.rm = TRUE)
+  #   
+  #   total_ice_melt_int <- total_ice_melt$IceMelt[IndPeriod1]
+  #   
+  #   # Update CatchMeltAndPliq with the total ice melt over the period
+  #   CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_int
+  # }
+  # 
+  ############################################################################################################################################
+  ## Glacier melt Version 2 ______________________________________________________________________________________ 
+  # icemelt_TMF <- function(inputData, SWE, param) {
+  #   Tm <- 0  # Threshold temperature for melting
+  #   fi <- param  # Melting factor
+  #   Mice <- numeric(nrow(inputData))  # Initialize the Mice vector
+  #   
+  #   # Calculate ice melt for each day based on temperature and SWE
+  #   for (i in 1:nrow(inputData)) {
+  #     if (SWE[i] <= 1 & inputData$Temp[i] > Tm) {
+  #       mice_temp <- (inputData$Temp[i] - Tm) * fi
+  #       Mice[i] <- mice_temp
+  #     } else {
+  #       Mice[i] <- 0  # No melting 
+  #     }
+  #   }
+  #   return(Mice)
+  # }
+  # 
+  
+  if (RunOptions$GlacierVersion == 2) {
+    
+    
+    # initialize SWE_Layer
+    SWE_Layer <- rep(NA, length(IndPeriod1))
+
+    ice_melts <- list()
+    active_layers <- which(RunOptions$RelIce > 0)
+    
+    for (layer in active_layers) {
+      print(paste0("Das ist Layer ",layer))
+      # Create the basinObsTS_Glac tibble for the current layer
+
+      basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR[IndPeriod1],
+                                    Ptot = InputsModel$LayerPrecip[[layer]][IndPeriod1],
+                                    Temp = InputsModel$LayerTemp[[layer]][IndPeriod1])
+
+
+      SWE_Layer <- CemaNeigeLayers[[sprintf("Layer%02i", layer)]]$SnowPack
+      
+    
+
+      Tm <- 0  # Threshold temperature for melting
+      fi <- RunOptions$MeltGlacier  # Melting factor
+      Mice <- numeric(nrow(basinObsTS_Glac))  # Initialize the Mice vector
+
+      # Calculate ice melt for each day based on temperature and SWE
+      for (i in 1:nrow(basinObsTS_Glac)) {
+        if (SWE_Layer[i] <= 1 & basinObsTS_Glac$Temp[i] > Tm) {
+          mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * fi
+          Mice[i] <- mice_temp
+        } else {
+          Mice[i] <- 0  # No melting
+        }
+      }
+
+      # glacier_melt <- icemelt_TMF(inputData = basinObsTS_Glac, SWE = SWE_Layer, param = RunOptions$MeltGlacier)
+
+      ice_melt <- tibble(Date = as.Date(basinObsTS_Glac$Date), IceMelt = Mice * RunOptions$RelIce[layer])
+
+      # Store the result in the list
+      ice_melts[[paste0("Layer", layer)]] <- ice_melt
+    }
+    total_ice_melt <- bind_rows(ice_melts) %>%
+      group_by(Date) %>%
+      summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
+
+    print(paste0(" dim total_ice_melt",dim(total_ice_melt)))
+
+    total_ice_melt_int <- total_ice_melt$TotalIceMelt
+    print(paste(" length CatchMeltAndPliq", length(CatchMeltAndPliq)))
+    CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_int
+
   }
 
 
@@ -167,5 +282,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
                      RESULTS,
                      LInputSeries,
                      Param,
-                     CemaNeigeLayers)
+                     CemaNeigeLayers,
+                     CatchMeltAndPliq,
+                     total_ice_melt_int)
 }

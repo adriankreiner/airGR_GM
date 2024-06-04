@@ -61,6 +61,11 @@ Calibration_Michel <- function(InputsModel,
     warning("argument 'FUN_CRIT' is deprecated. The error criterion function is now automatically get from the 'InputsCrit' object")
   }
 
+  # Necessary to claibrate with the glacier module 
+  if (!inherits(RunOptions, "GlacierVersion")) {
+    RunOptions$Outputs_Cal <- c(RunOptions$Outputs_Cal, "SnowPack")
+  }
+  
 
   ##_variables_initialisation
   ParamFinalR <- NULL
