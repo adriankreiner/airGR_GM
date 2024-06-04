@@ -53,6 +53,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
       IndOutputsCemaNeige <- which(RunOptions$FortranOutputs$CN %in% RunOptions$Outputs_Sim)
     }
     CemaNeigeLayers <- list()
+    CemaNeigeLayers_long <- list()
     CemaNeigeStateEnd <- NULL
     NameCemaNeigeLayers <- "CemaNeigeLayers"
 
@@ -86,8 +87,13 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
       RESULTS$StateEnd[RESULTS$StateEnd <= -99e8] <- NA
 
       ## Data storage
-      CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod1, i])
+      CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod2, i])
       names(CemaNeigeLayers[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
+      # add with 
+      CemaNeigeLayers_long[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod1, i])
+      names(CemaNeigeLayers_long[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
+      
+      
       IndPliqAndMelt <- which(names(CemaNeigeLayers[[iLayer]]) == "PliqAndMelt")
       if (iLayer == 1) {
         CatchMeltAndPliq <- RESULTS$Outputs[, IndPliqAndMelt] / NLayers
@@ -99,8 +105,12 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
         CemaNeigeStateEnd <- c(CemaNeigeStateEnd, RESULTS$StateEnd)
       }
       rm(RESULTS)
+      
+
+      
     } ### ENDFOR iLayer
     names(CemaNeigeLayers) <- sprintf("Layer%02i", seq_len(NLayers))
+    names(CemaNeigeLayers_long) <- sprintf("Layer%02i", seq_len(NLayers))
   } ### ENDIF RunSnowModule
   if (!inherits(RunOptions, "CemaNeige")) {
     CemaNeigeLayers <- list()
@@ -170,8 +180,6 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
   # 
   
   if (RunOptions$GlacierVersion == 2) {
-    
-    
     # initialize SWE_Layer
     SWE_Layer <- rep(NA, length(IndPeriod1))
 
@@ -179,7 +187,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
     active_layers <- which(RunOptions$RelIce > 0)
     
     for (layer in active_layers) {
-      print(paste0("Das ist Layer ",layer))
+      # print(paste0("Das ist Layer ",layer))
       # Create the basinObsTS_Glac tibble for the current layer
 
       basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR[IndPeriod1],
@@ -187,7 +195,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
                                     Temp = InputsModel$LayerTemp[[layer]][IndPeriod1])
 
 
-      SWE_Layer <- CemaNeigeLayers[[sprintf("Layer%02i", layer)]]$SnowPack
+      SWE_Layer <- CemaNeigeLayers_long[[sprintf("Layer%02i", layer)]]$SnowPack
       
     
 
@@ -216,10 +224,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
       group_by(Date) %>%
       summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
 
-    print(paste0(" dim total_ice_melt",dim(total_ice_melt)))
-
     total_ice_melt_int <- total_ice_melt$TotalIceMelt
-    print(paste(" length CatchMeltAndPliq", length(CatchMeltAndPliq)))
     CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_int
 
   }
