@@ -186,17 +186,26 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
     ice_melts <- list()
     active_layers <- which(RunOptions$RelIce > 0)
     
-    # if Temperature values is given or not 
-    if((!is.null(runOptions$MeltGlacier))) {
+    # Temperature threshold for melting
+    if((!is.null(RunOptions$MeltGlacier))) {
       Tm <- RunOptions$MeltGlacier_temp  
     } else {
       Tm <- 0
     }
-  
+    
+    # Temperature threshold for melting
+    if((!is.null(RunOptions$SWE_th))) {
+      SWE_th <- RunOptions$SWE_th  
+    } else {
+      SWE_th <- 1
+    }  
+    
+    
     fi <- RunOptions$MeltGlacier  # Melting factor
-      # 
+
       # print(paste0("fi: ",fi))
       # print(paste0("Tm: ",Tm))
+      # print(paste0("SWE_th: ",SWE_th))
     
     
     for (layer in active_layers) {
@@ -211,7 +220,7 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
 
       # Calculate ice melt for each day based on temperature and SWE
       for (i in 1:nrow(basinObsTS_Glac)) {
-        if (SWE_Layer[i] <= 5 & basinObsTS_Glac$Temp[i] > Tm) {
+        if (SWE_Layer[i] <= SWE_th & basinObsTS_Glac$Temp[i] > Tm) {
           
           mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * fi
           Mice[i] <- mice_temp
