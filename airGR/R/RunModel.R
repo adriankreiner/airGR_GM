@@ -12,7 +12,7 @@ RunModel <- function(InputsModel, RunOptions, Param, FUN_MOD, ...) {
   }
 
   OutputsModel <- FUN_MOD(InputsModel = InputsModel, RunOptions = RunOptions,
-                          Param = Param[iFirstParamRunOffModel:length(Param)], ...)
+                          Param = Param[iFirstParamRunOffModel:length(Param)])
 
   if (inherits(InputsModel, "SD") && !identical(FUN_MOD, RunModel_Lag)) {
     OutputsModel <- RunModel_Lag(InputsModel, RunOptions, Param[1], OutputsModel)

@@ -12,7 +12,7 @@
     }
   } else {
     # fatal error if the TransfoParam function does not exist
-    FUN_GR <- match.fun(sprintf("TransfoParam_%s", FeatFUN_MOD$CodeModHydro))
+    FUN_GR <- match.fun(sprintf("TransfoParam_%s", FeatFUN_MOD$CodeModHydro)) # AK: TRUE 
   }
 
   ## set FUN_SNOW
@@ -20,10 +20,16 @@
     if (IsHyst) {
       FUN_SNOW <- TransfoParam_CemaNeigeHyst
     } else {
-      FUN_SNOW <- TransfoParam_CemaNeige
+      FUN_SNOW <- TransfoParam_CemaNeige # AK: TRUE 
     }
   }
-
+  
+  ## Add the glacier module 
+  if(FeatFUN_MOD$CodeMod == "CemaNeigeGR4J_Glacier"){
+    FUN_GLACIER <- TransfoParam_Glacier
+  }
+  
+  
   ## set FUN_LAG
   if (IsSD) {
     FUN_LAG <- TransfoParam_Lag
@@ -66,24 +72,52 @@
         return(ParamOut)
       }
     }
-    if (!IsHyst & !IsSD) {
-      FUN_TRANSFO <- function(ParamIn, Direction) {
-        Bool <- is.matrix(ParamIn)
-        if (!Bool) {
-          ParamIn <- rbind(ParamIn)
+    if (!IsHyst & !IsSD) { # AK: TRUE 
+      
+      
+      if(!(FeatFUN_MOD$CodeMod == "CemaNeigeGR4J_Glacier")) {
+        
+        # normal CemaNeigeGR4J
+        FUN_TRANSFO <- function(ParamIn, Direction) {
+          Bool <- is.matrix(ParamIn)
+          if (!Bool) {
+            ParamIn <- rbind(ParamIn)
+          }
+          ParamOut <- NA * ParamIn
+          NParam   <- ncol(ParamIn)
+          if (NParam <= 3) {
+            ParamOut[, 1:(NParam - 2)] <- FUN_GR(cbind(ParamIn[, 1:(NParam - 2)]), Direction)
+          } else {
+            ParamOut[, 1:(NParam - 2)] <- FUN_GR(ParamIn[, 1:(NParam - 2)], Direction)
+          }
+          ParamOut[, (NParam - 1):NParam] <- FUN_SNOW(ParamIn[, (NParam - 1):NParam], Direction)
+          if (!Bool) {
+            ParamOut <- ParamOut[1, ]
+          }
+          return(ParamOut)
         }
-        ParamOut <- NA * ParamIn
-        NParam   <- ncol(ParamIn)
-        if (NParam <= 3) {
-          ParamOut[, 1:(NParam - 2)] <- FUN_GR(cbind(ParamIn[, 1:(NParam - 2)]), Direction)
-        } else {
-          ParamOut[, 1:(NParam - 2)] <- FUN_GR(ParamIn[, 1:(NParam - 2)], Direction)
-        }
-        ParamOut[, (NParam - 1):NParam] <- FUN_SNOW(ParamIn[, (NParam - 1):NParam], Direction)
-        if (!Bool) {
-          ParamOut <- ParamOut[1, ]
-        }
-        return(ParamOut)
+      }else {
+        # with additional glacier 
+        FUN_TRANSFO <- function(ParamIn, Direction) {
+          Bool <- is.matrix(ParamIn)
+          if (!Bool) {
+            ParamIn <- rbind(ParamIn)
+          }
+          ParamOut <- NA * ParamIn
+          NParam   <- ncol(ParamIn)
+          
+          ParamOut[, 1:(NParam - 3)] <- FUN_GR(ParamIn[, 1:(NParam - 3)], Direction)
+          ParamOut[, (NParam - 2):(NParam-1)] <- FUN_SNOW(ParamIn[, (NParam - 2):(NParam-1)], Direction)
+          ParamOut[, NParam] <- FUN_GLACIER(as.matrix(ParamIn[, NParam]), Direction)
+          
+          if (!Bool) {
+            ParamOut <- ParamOut[1, ]
+          }
+          return(ParamOut)
+          
+        }       
+        
+        
       }
     }
     if (IsHyst & IsSD) {

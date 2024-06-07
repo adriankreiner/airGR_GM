@@ -65,7 +65,10 @@
     res$CodeModHydro <- res$CodeMod
     if (grepl("CemaNeige", res$NameFunMod)) {
       res$Class <- c(res$Class, "CemaNeige")
-      res$CodeModHydro <- gsub("CemaNeige", "", res$CodeMod)
+      
+      # res$CodeModHydro <- gsub("CemaNeige", "", res$CodeMod)
+      # only exract GRxJ also remove _Glacier
+      res$CodeModHydro <- gsub("^CemaNeige(.*?)(_.*|$)", "\\1", res$CodeModHydro)
     }
     res$Class <- res$Class[!is.na(res$Class)]
     if (!is.null(DatesR)) {

@@ -8,6 +8,7 @@ GR4H;GR4H;4;hourly;NA;GR;airGR
 GR5H;GR5H;5;hourly;NA;GR;airGR
 CemaNeige;CemaNeige;2;NA;NA;NA;airGR
 CemaNeigeGR4J;CemaNeigeGR4J;6;daily;NA;GR;airGR
+CemaNeigeGR4J_Glacier;CemaNeigeGR4J_Glacier;7;daily;NA;GR;airGR
 CemaNeigeGR5J;CemaNeigeGR5J;7;daily;NA;GR;airGR
 CemaNeigeGR6J;CemaNeigeGR6J;8;daily;NA;GR;airGR
 CemaNeigeGR4H;CemaNeigeGR4H;6;hourly;NA;GR;airGR

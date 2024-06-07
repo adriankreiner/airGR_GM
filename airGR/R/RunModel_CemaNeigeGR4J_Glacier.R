@@ -1,4 +1,4 @@
-RunModel_CemaNeigeGR4J_GlacierV3 <- function(InputsModel, RunOptions, Param) {
+RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
 
 
   ## Initialization of variables
@@ -34,11 +34,19 @@ RunModel_CemaNeigeGR4J_GlacierV3 <- function(InputsModel, RunOptions, Param) {
   IndPeriod1     <- c(RunOptions$IndPeriod_WarmUp, RunOptions$IndPeriod_Run)
   LInputSeries   <- as.integer(length(IndPeriod1))
   IndPeriod2     <- (length(RunOptions$IndPeriod_WarmUp)+1):LInputSeries
-  ParamCemaNeige <- Param[(length(Param) - 1 - 2 * as.integer(IsHyst)):length(Param)]
-  NParamMod      <- as.integer(length(Param) - (2 + 2 * as.integer(IsHyst)))
+  
+  # Param GR4J: 4, Param CemaNeige 2, Param Glacier: 3 
+  ParamCemaNeige <- Param[5:6]
+  NParamMod      <- 4L
   ParamMod       <- Param[1:NParamMod]
   NLayers        <- length(InputsModel$LayerPrecip)
   NStatesMod     <- as.integer(length(RunOptions$IniStates) - NStates * NLayers)
+  
+  if (length(Param) > 6L) {
+    ParamGlacier <- Param[7:length(Param)]
+  } else {
+    ParamGlacier <- NULL
+  }
   
   ## Output data preparation
   ExportDatesR   <- "DatesR"   %in% RunOptions$Outputs_Sim
@@ -119,99 +127,49 @@ RunModel_CemaNeigeGR4J_GlacierV3 <- function(InputsModel, RunOptions, Param) {
   }
   
   
-  ############################################################################################################################################
-  ## Glacier melt (over all elevation bands)______________________________________________________________________________________ 
-  # if (RunOptions$GlacierModule) {
-  # if (RunOptions$GlacierVersion == 1) {
-  #   # Initialize a list to store ice melt data from each layer
-  #   ice_melts <- list()
-  #   active_layers <- which(RunOptions$RelIce > 0)
-  #   max_layer <- max(active_layers)
-  #   
-  #   for (layer in active_layers[1]:max_layer) {
-  #     # Create the basinObsTS_Glac data frame for the current layer
-  #     basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR,
-  #                                   Ptot = InputsModel$LayerPrecip[[layer]][IndPeriod1],
-  #                                   Temp = InputsModel$LayerTemp[[layer]][IndPeriod1])                    
-  #     
-  #     # Run the SnowGlacier_HBV model
-  #     glacier <- HBV.IANIGLA::SnowGlacier_HBV(model = 1,
-  #                                             inputData = as.matrix(basinObsTS_Glac[, c("Temp", "Ptot")]),
-  #                                             initCond = RunOptions$InitIce,
-  #                                             param = RunOptions$ParamIce)
-  #     
-  #     # Calculate IceMelt for the current layer and multiply by rel_ice
-  #     ice_melt <- data.frame(Date = basinObsTS_Glac$Date, 
-  #                            IceMelt = glacier[, "Mice"] * RunOptions$RelIce[layer])
-  #     
-  #     # Store the result in the list
-  #     ice_melts[[paste0("Layer", layer)]] <- ice_melt
-  #   }
-  #   
-  #   # Combine all IceMelt data from different layers and calculate the total ice melt
-  #   total_ice_melt <- do.call(rbind, ice_melts)
-  #   total_ice_melt <- aggregate(IceMelt ~ Date, data = total_ice_melt, FUN = sum, na.rm = TRUE)
-  #   
-  #   total_ice_melt_int <- total_ice_melt$IceMelt[IndPeriod1]
-  #   
-  #   # Update CatchMeltAndPliq with the total ice melt over the period
-  #   CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_int
-  # }
-  # 
-  ############################################################################################################################################
-  ## Glacier melt Version 2 ______________________________________________________________________________________ 
-  # icemelt_TMF <- function(inputData, SWE, param) {
-  #   Tm <- 0  # Threshold temperature for melting
-  #   fi <- param  # Melting factor
-  #   Mice <- numeric(nrow(inputData))  # Initialize the Mice vector
-  #   
-  #   # Calculate ice melt for each day based on temperature and SWE
-  #   for (i in 1:nrow(inputData)) {
-  #     if (SWE[i] <= 1 & inputData$Temp[i] > Tm) {
-  #       mice_temp <- (inputData$Temp[i] - Tm) * fi
-  #       Mice[i] <- mice_temp
-  #     } else {
-  #       Mice[i] <- 0  # No melting 
-  #     }
-  #   }
-  #   return(Mice)
-  # }
-  # 
-  
-  if (RunOptions$GlacierVersion == 2) {
+  ## Glacier___________________________________________________________________________________
     # initialize SWE_Layer
     SWE_Layer <- rep(NA, length(IndPeriod1))
-    
-
     ice_melts <- list()
-    active_layers <- which(RunOptions$RelIce > 0)
+    active_layers <- which(RunOptions$RelIce > 0) # Layer with glacier 
     
-    # Temperature threshold for melting
-    if((!is.null(RunOptions$MeltGlacier))) {
-      Tm <- RunOptions$MeltGlacier_temp  
-    } else {
+    # Parameter
+    if(length(ParamGlacier) == 0) {
+      # print("No glacier parameters")
+    }
+    if(length(ParamGlacier) == 1) {
+      Fi <- ParamGlacier[1]
       Tm <- 0
+      SWE_th <- 1
+      # print("Default values for Tm, SWE_th")
+    }
+    if(length(ParamGlacier) == 2) {
+      Fi <- ParamGlacier[1]
+      Tm <- ParamGlacier[2]
+      SWE_th <- 1
+      # print("Default values for SWE_th")
     }
     
-    # Temperature threshold for melting
-    if((!is.null(RunOptions$SWE_th))) {
-      SWE_th <- RunOptions$SWE_th  
-    } else {
-      SWE_th <- 1
-    }  
-    
-    
-    fi <- RunOptions$MeltGlacier  # Melting factor
+    if(length(ParamGlacier) == 3) {
+      Fi <- ParamGlacier[1]
+      Tm <- ParamGlacier[2]
+      SWE_th <- ParamGlacier[3]
+    }
 
-      # print(paste0("fi: ",fi))
-      # print(paste0("Tm: ",Tm))
-      # print(paste0("SWE_th: ",SWE_th))
+    # print(paste0("fi: ",Fi))
+    # print(paste0("Tm: ",Tm))
+    # print(paste0("SWE_th: ",SWE_th))
     
     
+    # Loop over the active layers to calculate ice melt
     for (layer in active_layers) {
+      
+      PLayer_names <- names(InputsModel$LayerPrecip)
+      
+      
       basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR[IndPeriod1],
-                                    Ptot = InputsModel$LayerPrecip[[layer]][IndPeriod1],
-                                    Temp = InputsModel$LayerTemp[[layer]][IndPeriod1])
+                                    Ptot = InputsModel$LayerPrecip[[PLayer_names[layer]]][IndPeriod1],
+                                    Temp = InputsModel$LayerTemp[[PLayer_names[layer]]][IndPeriod1])
 
 
       SWE_Layer <- CemaNeigeLayers_long[[sprintf("Layer%02i", layer)]]$SnowPack
@@ -222,7 +180,7 @@ RunModel_CemaNeigeGR4J_GlacierV3 <- function(InputsModel, RunOptions, Param) {
       for (i in 1:nrow(basinObsTS_Glac)) {
         if (SWE_Layer[i] <= SWE_th & basinObsTS_Glac$Temp[i] > Tm) {
           
-          mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * fi
+          mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * Fi
           Mice[i] <- mice_temp
         } else {
           Mice[i] <- 0  # No melting
@@ -234,15 +192,15 @@ RunModel_CemaNeigeGR4J_GlacierV3 <- function(InputsModel, RunOptions, Param) {
       # Store the result in the list
       ice_melts[[paste0("Layer", layer)]] <- ice_melt
     }
+    
+    # Sum the ice melt from all layers
     total_ice_melt <- bind_rows(ice_melts) %>%
       group_by(Date) %>%
       summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
-
     total_ice_melt_int <- total_ice_melt$TotalIceMelt
+    
+    # Add the ice melt to the snow and rain 
     CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_int
-
-  }
-
 
 
   ## GR model______________________________________________________________________________________

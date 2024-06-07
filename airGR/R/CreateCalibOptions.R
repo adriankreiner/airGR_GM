@@ -8,6 +8,7 @@ CreateCalibOptions <- function(FUN_MOD,
                                StartParamList = NULL,
                                StartParamDistrib = NULL) {
 
+
   ObjectClass <- NULL
 
   FUN_MOD     <- match.fun(FUN_MOD)
@@ -109,7 +110,7 @@ CreateCalibOptions <- function(FUN_MOD,
   }
 
   ## check StartParamList and StartParamDistrib default values
-  if (("HBAN"  %in% ObjectClass & is.null(StartParamList) & is.null(StartParamDistrib))) {
+  if (("HBAN"  %in% ObjectClass & is.null(StartParamList) & is.null(StartParamDistrib))) { # AK: TRUE 
     if ("GR4H" == FeatFUN_MOD$CodeMod) {
       ParamT <- matrix(c(+5.12, -1.18, +4.34, -9.69,
                          +5.58, -0.85, +4.74, -9.47,
@@ -178,6 +179,16 @@ CreateCalibOptions <- function(FUN_MOD,
                          +5.51, -0.61, +3.74, -8.51, -9.14, +6.90,
                          +6.07, -0.02, +4.42, -8.06, +4.10, +7.21), ncol = 6, byrow = TRUE)
     }
+    
+    
+    # Add parameter for CemaNeigeGR4J_Glacier: First is degree day melt factor
+    if ("CemaNeigeGR4J_Glacier" == FeatFUN_MOD$CodeMod) {
+      ParamT <- matrix(c(+5.13, -1.60, +3.03, -9.05, -9.96, +6.63, +6.63,
+                         +5.51, -0.61, +3.74, -8.51, -9.14, +6.90, +6.90,
+                         +6.07, -0.02, +4.42, -8.06, +4.10, +7.21, +7.21), ncol = 7, byrow = TRUE)
+    }
+    
+    
     if ("CemaNeigeGR5J" == FeatFUN_MOD$CodeMod) {
       ParamT <- matrix(c(+5.17, -1.13, +3.08, -9.37, -7.45, -9.96, +6.63,
                          +5.55, -0.46, +3.75, -9.09, -4.69, -9.14, +6.90,
@@ -201,7 +212,7 @@ CreateCalibOptions <- function(FUN_MOD,
                            -5.00), ncol = 1, byrow = TRUE)
       ParamT <- cbind(ParamTSD, ParamT)
     }
-
+    
     StartParamList    <- NULL
     StartParamDistrib <- TransfoParam(ParamIn = ParamT, Direction = "TR", FUN_TRANSFO = FUN_TRANSFO)
 

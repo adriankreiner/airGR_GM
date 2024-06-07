@@ -34,6 +34,9 @@ RunModel_CemaNeigeGR4J <- function(InputsModel, RunOptions, Param) {
   IndPeriod1     <- c(RunOptions$IndPeriod_WarmUp, RunOptions$IndPeriod_Run)
   LInputSeries   <- as.integer(length(IndPeriod1))
   IndPeriod2     <- (length(RunOptions$IndPeriod_WarmUp)+1):LInputSeries
+  
+  # GR4J: 4 param, CemaNeige: 2 param, Glacier: 1 param 
+  
   ParamCemaNeige <- Param[(length(Param) - 1 - 2 * as.integer(IsHyst)):length(Param)]
   NParamMod      <- as.integer(length(Param) - (2 + 2 * as.integer(IsHyst)))
   ParamMod       <- Param[1:NParamMod]
