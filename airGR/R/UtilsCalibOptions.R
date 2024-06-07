@@ -106,9 +106,9 @@
           ParamOut <- NA * ParamIn
           NParam   <- ncol(ParamIn)
           
-          ParamOut[, 1:(NParam - 3)] <- FUN_GR(ParamIn[, 1:(NParam - 3)], Direction)
-          ParamOut[, (NParam - 2):(NParam-1)] <- FUN_SNOW(ParamIn[, (NParam - 2):(NParam-1)], Direction)
-          ParamOut[, NParam] <- FUN_GLACIER(as.matrix(ParamIn[, NParam]), Direction)
+          ParamOut[, (1:4)] <- FUN_GR(ParamIn[, (1:4)], Direction)
+          ParamOut[, (5:6)] <- FUN_SNOW(ParamIn[, (5:6)], Direction)
+          ParamOut[, (7:9)] <- FUN_GLACIER(ParamIn[, (7:9)], Direction)
           
           if (!Bool) {
             ParamOut <- ParamOut[1, ]
