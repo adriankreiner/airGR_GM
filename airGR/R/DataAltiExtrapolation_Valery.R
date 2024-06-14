@@ -96,7 +96,7 @@ DataAltiExtrapolation_Valery <- function(DatesR,
     }
   } else {
     ##Elevation_gradients_for_daily_mean_min_and_max_temperature
-    GradT <- .GradT_Valery2010
+    GradT <- .GradT_Interpol_AlaArcha
     
     iday <- match(format(DatesR, format = "%d%m"),
                   sprintf("%02i%02i", GradT[, "day"], GradT[, "month"]))

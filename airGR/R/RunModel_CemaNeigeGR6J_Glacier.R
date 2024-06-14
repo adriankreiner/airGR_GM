@@ -1,4 +1,4 @@
-RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
+RunModel_CemaNeigeGR6J_Glacier <- function(InputsModel, RunOptions, Param) {
 
 
   ## Initialization of variables
@@ -38,14 +38,47 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
   IndPeriod1     <- c(RunOptions$IndPeriod_WarmUp, RunOptions$IndPeriod_Run)
   LInputSeries   <- as.integer(length(IndPeriod1))
   IndPeriod2     <- (length(RunOptions$IndPeriod_WarmUp)+1):LInputSeries
-  ParamCemaNeige <- Param[(length(Param) - 1 - 2 * as.integer(IsHyst)):length(Param)]
-  NParamMod      <- as.integer(length(Param) - (2 + 2 * as.integer(IsHyst)))
+  
+  # Param GR6J: 6, Param CemaNeige 2, Param Glacier: 3 
+  ParamCemaNeige <- Param[7:8]
+  NParamMod      <- 6L
   ParamMod       <- Param[1:NParamMod]
   NLayers        <- length(InputsModel$LayerPrecip)
   NStatesMod     <- as.integer(length(RunOptions$IniStates) - NStates * NLayers)
+  
+  # Glacier parameter
+  if (length(Param) > 8L) {
+    ParamGlacier <- Param[9:length(Param)]
+  } else {
+    print(" No glacier parameters")
+  }
+  
+  # Parameter
+  if(length(ParamGlacier) == 1) {
+    Fi <- ParamGlacier[1]
+    Tm <- 0
+    SWE_th <- 1
+    # print("Default values for Tm, SWE_th")
+  }
+  if(length(ParamGlacier) == 2) {
+    Fi <- ParamGlacier[1]
+    Tm <- ParamGlacier[2]
+    SWE_th <- 1
+    # print("Default values for SWE_th")
+  }
+  
+  if(length(ParamGlacier) == 3) {
+    Fi <- ParamGlacier[1]
+    Tm <- ParamGlacier[2]
+    SWE_th <- ParamGlacier[3]
+  }
+
+  
+
+  
   ExportDatesR   <- "DatesR"   %in% RunOptions$Outputs_Sim
   ExportStateEnd <- "StateEnd" %in% RunOptions$Outputs_Sim
-
+  
 
   ## CemaNeige________________________________________________________________________________
   if (inherits(RunOptions, "CemaNeige")) {
@@ -55,6 +88,7 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
       IndOutputsCemaNeige <- which(RunOptions$FortranOutputs$CN %in% RunOptions$Outputs_Sim)
     }
     CemaNeigeLayers <- list()
+    CemaNeigeLayers_long <- list()
     CemaNeigeStateEnd <- NULL
     NameCemaNeigeLayers <- "CemaNeigeLayers"
 
@@ -90,6 +124,11 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
       ## Data storage
       CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod2, i])
       names(CemaNeigeLayers[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
+      
+      # add: Total length including warmup 
+      CemaNeigeLayers_long[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[, i])
+      names(CemaNeigeLayers_long[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
+      
       IndPliqAndMelt <- which(names(CemaNeigeLayers[[iLayer]]) == "PliqAndMelt")
       if (iLayer == 1) {
         CatchMeltAndPliq <- RESULTS$Outputs[, IndPliqAndMelt] / NLayers
@@ -103,6 +142,7 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
       rm(RESULTS)
     } ### ENDFOR iLayer
     names(CemaNeigeLayers) <- sprintf("Layer%02i", seq_len(NLayers))
+    names(CemaNeigeLayers_long) <- sprintf("Layer%02i", seq_len(NLayers))
   } ### ENDIF RunSnowModule
   if (!inherits(RunOptions, "CemaNeige")) {
     CemaNeigeLayers <- list()
@@ -111,7 +151,62 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
     CatchMeltAndPliq <- InputsModel$Precip[IndPeriod1]
   }
 
+  ## Glacier___________________________________________________________________________________
+  # initialize SWE_Layer
+  SWE_Layer <- rep(NA, length(IndPeriod1))
+  ice_melts <- list()
+  active_layers <- which(RunOptions$RelIce > 0) # Layer with glacier 
+  
+  
+  # Loop over the active layers to calculate ice melt
+  for (layer in active_layers) {
+    
+    PLayer_names <- names(InputsModel$LayerPrecip)
+    
+    
+    basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR[IndPeriod1],
+                                  Ptot = InputsModel$LayerPrecip[[PLayer_names[layer]]][IndPeriod1],
+                                  Temp = InputsModel$LayerTemp[[PLayer_names[layer]]][IndPeriod1])
+    
+    
+    SWE_Layer <- CemaNeigeLayers_long[[sprintf("Layer%02i", layer)]]$SnowPack
+    
+    Mice <- numeric(nrow(basinObsTS_Glac))  # Initialize the Mice vector
+    
+    # Calculate ice melt for each day based on temperature and SWE
+    for (i in 1:nrow(basinObsTS_Glac)) {
+      if (SWE_Layer[i] <= SWE_th & basinObsTS_Glac$Temp[i] > Tm) {
+        
+        mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * Fi
+        Mice[i] <- mice_temp
+      } else {
+        Mice[i] <- 0  # No melting
+      }
+    }
+    
+    ice_melt <- tibble::tibble(Date = as.Date(basinObsTS_Glac$Date), IceMelt = Mice * RunOptions$RelIce[layer])
+    
+    # Store the result in the list
+    ice_melts[[paste0("Layer", layer)]] <- ice_melt
+  }
+  
+  # Sum the ice melt from all layers
+  total_ice_melt <- bind_rows(ice_melts) %>%
+    group_by(Date) %>%
+    summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
+  
+  total_ice_melt_glacier <- total_ice_melt$TotalIceMelt
+  
+  # just for the output:
+  ice_melts_layer <- lapply(ice_melts, function(df) {
+    df[IndPeriod2, ]
+  })
+  
+  # Add the ice melt to the snow and rain 
+  CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_glacier
+  
 
+  
 
   ## GR model______________________________________________________________________________________
   if ("all" %in% RunOptions$Outputs_Sim) {
@@ -120,14 +215,16 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
     IndOutputsMod <- which(RunOptions$FortranOutputs$GR %in% RunOptions$Outputs_Sim)
   }
 
+  
   ## Use of IniResLevels
   if (!is.null(RunOptions$IniResLevels)) {
+    
     RunOptions$IniStates[1] <- RunOptions$IniResLevels[1] * ParamMod[1] ### production store level (mm)
     RunOptions$IniStates[2] <- RunOptions$IniResLevels[2] * ParamMod[3] ### routing store level (mm)
     RunOptions$IniStates[3] <- RunOptions$IniResLevels[3]               ### exponential store level (mm)
   }
 
-  
+
   ## Call GR model Fortan
   RESULTS <- .Fortran("frun_gr6j", PACKAGE = "airGR",
                       ## inputs
@@ -144,6 +241,7 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
                       Outputs = matrix(as.double(-99e9), nrow = LInputSeries, ncol = length(IndOutputsMod)), ### output series [mm or mm/d]
                       StateEnd = rep(as.double(-99e9), NStatesMod)                                           ### state variables at the end of the model run
   )
+
   RESULTS$Outputs[RESULTS$Outputs   <= -99e8] <- NA
   RESULTS$StateEnd[RESULTS$StateEnd <= -99e8] <- NA
   if (ExportStateEnd) {
@@ -171,6 +269,9 @@ RunModel_CemaNeigeGR6J <- function(InputsModel, RunOptions, Param) {
                      RESULTS,
                      LInputSeries,
                      Param,
-                     CemaNeigeLayers)
+                     CemaNeigeLayers, 
+                     CatchMeltAndPliq[IndPeriod2],
+                     total_ice_melt_glacier[IndPeriod2], 
+                     ice_melts_layer)
 }
 

@@ -194,7 +194,8 @@ CreateRunOptions <- function(FUN_MOD, InputsModel,
       }
     } else if (is.null(IniStates)) {
       IniResLevels <- as.double(c(0.3, 0.5, NA, NA))
-      if (identical(FUN_MOD, RunModel_GR6J) | identical(FUN_MOD, RunModel_CemaNeigeGR6J)) {
+      
+      if (identical(FUN_MOD, RunModel_GR6J) | identical(FUN_MOD, RunModel_CemaNeigeGR6J) | identical(FUN_MOD, RunModel_CemaNeigeGR6J_Glacier)) {
         IniResLevels <- as.double(c(0.3, 0.5, 0, NA))
       }
       if ((identical(FUN_MOD, RunModel_GR5H) | identical(FUN_MOD, RunModel_CemaNeigeGR5H)) & IsIntStore) {

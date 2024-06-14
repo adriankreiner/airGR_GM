@@ -121,7 +121,8 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
       ## Data storage
       CemaNeigeLayers[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[IndPeriod2, i])
       names(CemaNeigeLayers[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
-      # add with 
+      
+      # add: Total length including warmup 
       CemaNeigeLayers_long[[iLayer]] <- lapply(seq_len(RESULTS$NOutputs), function(i) RESULTS$Outputs[, i])
       names(CemaNeigeLayers_long[[iLayer]]) <- RunOptions$FortranOutputs$CN[IndOutputsCemaNeige]
       
@@ -136,8 +137,6 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
         CemaNeigeStateEnd <- c(CemaNeigeStateEnd, RESULTS$StateEnd)
       }
       rm(RESULTS)
-      
-
       
     } ### ENDFOR iLayer
     names(CemaNeigeLayers) <- sprintf("Layer%02i", seq_len(NLayers))
@@ -155,28 +154,28 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
     # initialize SWE_Layer
     SWE_Layer <- rep(NA, length(IndPeriod1))
     ice_melts <- list()
-    active_layers <- which(RunOptions$RelIce > 0) # Layer with glacier 
+    active_layers <- which(RunOptions$RelIce > 0) # Layer with glacier
 
-    
+
     # Loop over the active layers to calculate ice melt
     for (layer in active_layers) {
-      
+
       PLayer_names <- names(InputsModel$LayerPrecip)
-      
-      
+
+
       basinObsTS_Glac <- data.frame(Date = InputsModel$DatesR[IndPeriod1],
                                     Ptot = InputsModel$LayerPrecip[[PLayer_names[layer]]][IndPeriod1],
                                     Temp = InputsModel$LayerTemp[[PLayer_names[layer]]][IndPeriod1])
 
 
       SWE_Layer <- CemaNeigeLayers_long[[sprintf("Layer%02i", layer)]]$SnowPack
-      
+
       Mice <- numeric(nrow(basinObsTS_Glac))  # Initialize the Mice vector
 
       # Calculate ice melt for each day based on temperature and SWE
       for (i in 1:nrow(basinObsTS_Glac)) {
         if (SWE_Layer[i] <= SWE_th & basinObsTS_Glac$Temp[i] > Tm) {
-          
+
           mice_temp <- (basinObsTS_Glac$Temp[i] - Tm) * Fi
           Mice[i] <- mice_temp
         } else {
@@ -184,26 +183,29 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
         }
       }
 
-      ice_melt <- tibble::tibble(Date = as.Date(basinObsTS_Glac$Date), IceMelt = Mice * RunOptions$RelIce[layer])
+      
+      ice_melt <- data.frame(Date = as.Date(basinObsTS_Glac$Date), IceMelt = Mice * RunOptions$RelIce[layer])
 
       # Store the result in the list
       ice_melts[[paste0("Layer", layer)]] <- ice_melt
     }
-    
+
     # Sum the ice melt from all layers
     total_ice_melt <- bind_rows(ice_melts) %>%
       group_by(Date) %>%
       summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
-    
+
     total_ice_melt_glacier <- total_ice_melt$TotalIceMelt
-    
+
     # just for the output:
     ice_melts_layer <- lapply(ice_melts, function(df) {
       df[IndPeriod2, ]
     })
-    
-    # Add the ice melt to the snow and rain 
+
+    # Add the ice melt to the snow and rain
     CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_glacier
+    
+  
 
 
   ## GR model______________________________________________________________________________________
@@ -219,6 +221,7 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
     RunOptions$IniStates[2] <- RunOptions$IniResLevels[2] * ParamMod[3] ### routing store level (mm)
   }
 
+    
   ## Call GR model Fortan
   RESULTS <- .Fortran("frun_gr4j", PACKAGE = "airGR",
                       ## inputs
