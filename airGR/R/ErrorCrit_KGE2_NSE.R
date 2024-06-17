@@ -1,5 +1,8 @@
-ErrorCrit_KGE2 <- function(InputsCrit, OutputsModel, warnings = TRUE, verbose = TRUE) {
-
+ErrorCrit_KGE2_NSE <- function(InputsCrit, OutputsModel, warnings = TRUE, verbose = TRUE) {
+  
+  # =================================================================================================
+  # KGE2
+  
   ## Arguments check
   if (!inherits(OutputsModel, "OutputsModel")) {
     stop("'OutputsModel' must be of class 'OutputsModel'")
@@ -93,6 +96,10 @@ ErrorCrit_KGE2 <- function(InputsCrit, OutputsModel, warnings = TRUE, verbose = 
     }
   }
 
+  # =================================================================================================
+  # NSE 
+  
+  
 
   ## Output
   OutputsCrit <- list(CritValue       = CritValue,
