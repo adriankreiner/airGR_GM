@@ -152,6 +152,10 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
   
   ## Glacier___________________________________________________________________________________
     # initialize SWE_Layer
+  
+  if (is.null(RunOptions$RelIce)) {
+    print("no glacier area")
+  }
     SWE_Layer <- rep(NA, length(IndPeriod1))
     ice_melts <- list()
     active_layers <- which(RunOptions$RelIce > 0) # Layer with glacier

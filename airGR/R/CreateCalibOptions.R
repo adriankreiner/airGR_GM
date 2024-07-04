@@ -184,9 +184,9 @@ CreateCalibOptions <- function(FUN_MOD,
     # Add parameter for CemaNeigeGR4J_Glacier: First is degree day melt factor
     # For Tm and SWE_th: 25% and 50% and 75% quantiles from -9.99 to 9.99 (transfered)
     if ("CemaNeigeGR4J_Glacier" == FeatFUN_MOD$CodeMod) {
-      ParamT <- matrix(c(+5.13, -1.60, +3.03, -9.05, -9.96, +6.63, +6.63, -2.24,-2.24 ,
-                         +5.51, -0.61, +3.74, -8.51, -9.14, +6.90, +6.90, +0,    +0,
-                         +6.07, -0.02, +4.42, -8.06, +4.10, +7.21, +7.21, 2.24, 2.24), ncol = 9, byrow = TRUE)
+      ParamT <- matrix(c(+5.13, -1.60, +3.03, -9.05, -9.96, +6.63, -2.24, -2.24, -2.24 ,
+                         +5.51, -0.61, +3.74, -8.51, -9.14, +6.90, +0,    +0,    +0,
+                         +6.07, -0.02, +4.42, -8.06, +4.10, +7.21, +2.24, +2.24, 2.24), ncol = 9, byrow = TRUE)
     }
     
     
