@@ -6,7 +6,8 @@ CreateInputsModel <- function(FUN_MOD,
                               ZInputs = NULL, HypsoData = NULL, NLayers = 5,
                               Qupstream = NULL, LengthHydro = NULL, BasinAreas = NULL,
                               QupstrUnit = "mm",
-                              verbose = TRUE) {
+                              verbose = TRUE, 
+                              Code_lapsrate = NULL) {
 
 
   ObjectClass <- NULL
@@ -253,7 +254,8 @@ CreateInputsModel <- function(FUN_MOD,
                                            Precip = Precip, PrecipScale = PrecipScale,
                                            TempMean = TempMean, TempMin = TempMin, TempMax = TempMax,
                                            ZInputs = ZInputs, HypsoData = HypsoData, NLayers = NLayers,
-                                           verbose = verbose)
+                                           verbose = verbose, 
+                                           Code_lapsrate = Code_lapsrate)
     if (verbose) {
       if (NLayers == 1) {
         message("input series were successfully created on 1 elevation layer for use by CemaNeige")

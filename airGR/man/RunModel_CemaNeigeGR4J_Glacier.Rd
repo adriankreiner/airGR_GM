@@ -1,8 +1,8 @@
 \encoding{UTF-8}
 
 
-\name{RunModel_CemaNeigeGR4J}
-\alias{RunModel_CemaNeigeGR4J}
+\name{RunModel_CemaNeigeGR4J_Glacier}
+\alias{RunModel_CemaNeigeGR4J_Glacier}
 
 
 \title{Run with the CemaNeigeGR4J hydrological model}

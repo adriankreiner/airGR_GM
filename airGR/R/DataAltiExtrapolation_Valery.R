@@ -2,13 +2,19 @@ DataAltiExtrapolation_Valery <- function(DatesR,
                                          Precip,  PrecipScale = TRUE,
                                          TempMean, TempMin = NULL, TempMax = NULL,
                                          ZInputs,  HypsoData, NLayers,
-                                         verbose = TRUE) {
+                                         verbose = TRUE, 
+                                         Code_lapsrate = NULL) {
 
   ##Altitudinal_gradient_functions_______________________________________________________________
   # ##unique_gradient_for_precipitation
-  # GradP_Valery2010 <- 0.00041  ### value from Valery PhD thesis page 126
-  GradP_Valery2010 <- 0.0002424229   ### value from CHELSA data for Ala Archa
-   
+  
+  if(is.null(Code_lapsrate)){
+    GradP <- 0.00041 #value from Valery PhD thesis page 126
+  } else if(Code_lapsrate == 15194){
+    GradP <- 0.0002424229 #value from CHELSA data for Ala Archa
+  } else if(Code_lapsrate == 16936){
+    GradP <-0.00043 #value from CHELSA data for Inflow Toktogul (noch anpassen)
+  } 
 
 
   ##Format_______________________________________________________________________________________
@@ -52,7 +58,6 @@ DataAltiExtrapolation_Valery <- function(DatesR,
     LayerPrecip <- list(as.double(Precip))
   } else {
     ##Elevation_gradients_for_daily_mean_precipitation
-    GradP    <- GradP_Valery2010 ### single value
     TabGradP <- rep(GradP, length(Precip))
     ##Extrapolation
     ##Thresold_of_inputs_median_elevation
@@ -96,7 +101,13 @@ DataAltiExtrapolation_Valery <- function(DatesR,
     }
   } else {
     ##Elevation_gradients_for_daily_mean_min_and_max_temperature
-    GradT <- .GradT_Interpol_AlaArcha
+    if(is.null(Code_lapsrate)){
+      GradT <- .GradT_Valery2010
+    } else if(Code_lapsrate == 15194){
+      GradT <- .GradT_Interpol_15194
+    } else if(Code_lapsrate == 16936){
+    GradT <- .GradT_Interpol_16936
+    }
     
     iday <- match(format(DatesR, format = "%d%m"),
                   sprintf("%02i%02i", GradT[, "day"], GradT[, "month"]))

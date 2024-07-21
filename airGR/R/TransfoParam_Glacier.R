@@ -9,7 +9,7 @@ TransfoParam_Glacier <- function(ParamIn, Direction) {
   ## transformation
   if (Direction == "TR") {
     ParamOut <- ParamIn
-    ParamOut[, 1] <- exp(ParamIn[, 1]) / 400       ### Degree day melt coefficient Glacier
+    ParamOut[, 1] <- exp(ParamIn[, 1]) / 200       ### Degree day melt coefficient Glacier
     # ParamOut[, 1] <- (20/19.8) * (ParamIn[, 1]) + (10) # Fi degree day melt factor [0,20]
     ParamOut[, 2] <- 6/19.98* (ParamIn[, 2])   # Tm linear normalized  [-9.99, 9.99] to [-5, 5]
     ParamOut[, 3] <- exp(ParamIn[, 3]) / 200
@@ -17,7 +17,7 @@ TransfoParam_Glacier <- function(ParamIn, Direction) {
   }
   if (Direction == "RT") {
     ParamOut <- ParamIn
-    ParamOut[, 1] <- log(ParamIn[, 1] * 400)       ### Fi Degree day melt coefficient Glacier
+    ParamOut[, 1] <- log(ParamIn[, 1] * 200)       ### Fi Degree day melt coefficient Glacier
     # ParamOut[, 1] <- (ParamIn[, 1]-10)/(20/19.8) # Fi degree day melt factor [0,20]
     ParamOut[, 2] <- 19.98/6 * (ParamIn[, 2])  # Tm 
     ParamOut[, 3] <- log(ParamIn[, 3] * 200)
