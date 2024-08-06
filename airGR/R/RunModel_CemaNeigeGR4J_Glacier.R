@@ -271,6 +271,5 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
                      Param,
                      CemaNeigeLayers,
                      CatchMeltAndPliq[IndPeriod2],
-                     total_ice_melt_glacier[IndPeriod2], 
-                     ice_melts_layer)
+                     total_ice_melt_glacier[IndPeriod2])
 }

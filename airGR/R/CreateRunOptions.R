@@ -3,7 +3,8 @@ CreateRunOptions <- function(FUN_MOD, InputsModel,
                              IniStates = NULL, IniResLevels = NULL, Imax = NULL,
                              Outputs_Cal = NULL, Outputs_Sim = "all",
                              MeanAnSolidPrecip = NULL, IsHyst = FALSE,
-                             warnings = TRUE, verbose = TRUE) {
+                             warnings = TRUE, verbose = TRUE, 
+                             RelIce = NULL) {
 
   if (!is.null(Imax)) {
     if (!is.numeric(Imax) | length(Imax) != 1L) {
@@ -458,6 +459,10 @@ CreateRunOptions <- function(FUN_MOD, InputsModel,
     }
   }
 
+
+
+  
+  
   ##Create_RunOptions
   RunOptions <- list(IndPeriod_WarmUp = IndPeriod_WarmUp,
                      IndPeriod_Run = IndPeriod_Run,
@@ -475,6 +480,15 @@ CreateRunOptions <- function(FUN_MOD, InputsModel,
     RunOptions <- c(RunOptions, list(Imax = Imax))
   }
   class(RunOptions) <- c("RunOptions", ObjectClass)
+  
+  # for the glaicer module: add relative glacier area to the RunOptions
+  if (FeatFUN_MOD$NameFunMod %in% c("RunModel_CemaNeigeGR6J_Glacier", "RunModel_CemaNeigeGR4J_Glacier")){
+    if (is.null(RelIce)) {
+      stop("RelIce must be defined for the glacier model" )
+    }
+    RunOptions$RelIce <- RelIce
+  }
+
 
   return(RunOptions)
 
