@@ -199,7 +199,7 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
       group_by(Date) %>%
       summarize(TotalIceMelt = sum(IceMelt, na.rm = TRUE))
 
-    total_ice_melt_glacier <- total_ice_melt$TotalIceMelt
+    TotGlacMelt <- total_ice_melt$TotalIceMelt
 
     # just for the output:
     # ice_melts_layer <- lapply(ice_melts, function(df) {
@@ -207,7 +207,7 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
     # })
 
     # Add the ice melt to the snow and rain
-    CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_glacier
+    CatchMeltAndPliq <- CatchMeltAndPliq + TotGlacMelt
     
   
 
@@ -271,5 +271,5 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
                      Param,
                      CemaNeigeLayers,
                      CatchMeltAndPliq[IndPeriod2],
-                     total_ice_melt_glacier[IndPeriod2])
+                     TotGlacMelt[IndPeriod2])
 }

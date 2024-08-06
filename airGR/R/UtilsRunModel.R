@@ -17,7 +17,7 @@
                                Param,
                                CemaNeigeLayers = NULL, 
                                CatchMeltAndPliq = NULL,
-                               total_ice_melt_glacier) {
+                               TotGlacMelt) {
 
   IndPeriod2 <- (length(RunOptions$IndPeriod_WarmUp)+1):LInputSeries
   FortranOutputs <- RunOptions$FortranOutputs$GR
@@ -60,8 +60,8 @@
   if (!is.null(CatchMeltAndPliq)) {
     OutputsModel$CatchMeltAndPliq <- CatchMeltAndPliq
   }
-  if (!is.null(total_ice_melt_glacier)) {
-    OutputsModel$total_ice_melt_glacier <- total_ice_melt_glacier
+  if (!is.null(TotGlacMelt)) {
+    OutputsModel$TotGlacMelt <- TotGlacMelt
   }
 
   return(OutputsModel)

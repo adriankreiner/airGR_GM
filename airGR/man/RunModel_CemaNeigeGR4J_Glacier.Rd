@@ -5,16 +5,15 @@
 \alias{RunModel_CemaNeigeGR4J_Glacier}
 
 
-\title{Run with the CemaNeigeGR4J hydrological model}
+\title{Run with the RunModel_CemaNeigeGR4J_Glacier hydrological model}
 
 
 \description{
-Function which performs a single run for the RunModel_CemaNeigeGR4J_Glacier daily lumped model over the test period. The model is based on the GR4J rainfall-runoff model and the CemaNeige snow model. The model is run with the given parameter set and input data.
-}
+This function runs the RunModel_CemaNeigeGR4J_Glacier daily lumped model over the test period. The model combines the GR4J rainfall-runoff model and the CemaNeige snow model, with an additional glacier module using the temperature melt index (TMI) model described below. The glacier module is spatially discretized in the same way as the CemaNeige layers.}
 
 
 \usage{
-RunModel_CemaNeigeGR4J(InputsModel, RunOptions, Param)
+RunModel_CemaNeigeGR4J_Glacier(InputsModel, RunOptions, Param)
 }
 
 
@@ -75,18 +74,14 @@ RunModel_CemaNeigeGR4J(InputsModel, RunOptions, Param)
     \emph{RunOptions$WarmUpQsim} \tab [numeric] series of simulated discharge (Q) on the warm-up period [mm/d] \cr
     \emph{RunOptions$Param     } \tab [numeric] parameter set parameter set used by the model                  \cr
     \emph{$StateEnd} \tab [numeric] states at the end of the run: store & unit hydrographs levels [mm], CemaNeige states [mm & °C]. See \code{\link{CreateIniStates}} for more details \cr
-    \emph{$StateEnd} \tab [numeric] states at the end of the run: store & unit hydrographs levels [mm], CemaNeige states [mm & °C]. See \code{\link{CreateIniStates}} for more details \cr
+    \emph{TotGlacMelt} \tab [numeric] modelled glacier melt Mi as total over all elevation bands [mm/d] \cr
   }
 Refer to the provided references or to the package source code for further details on these model outputs.
 }
 
 
 \details{
-
-
-
-
-  The formula for calculating the daily ice melt, \code{Mi}, from glaciers is given by:
+Glacier melt in the elevation layers is given as liquid input into the GR4J model, similar to snow melt. SWE is modeled within the CemaNeige compartment and given as input to the glacier module. Ice melt starts only if the temperature and SWE thresholds are exceeded. For calculating Ai, please refer to \code{\link{CreateRunOptions}}. The formula for calculating the daily ice melt, \code{Mi}, from glaciers is given by:
   \deqn{M_i = \left\{
     \begin{array}{ll}
       F_i \times (T - T_m) \times A_i & \text{if } SWE \geq SWE_{th} \text{ and } T \geq T_m \\
