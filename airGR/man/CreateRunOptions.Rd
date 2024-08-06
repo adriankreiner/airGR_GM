@@ -24,9 +24,11 @@ CreateRunOptions(FUN_MOD, InputsModel,
 
 
 \arguments{
-\item{FUN_MOD}{[function] hydrological model function (e.g. \code{\link{RunModel_GR4J}}, \code{\link{RunModel_CemaNeigeGR4J}}, \code{\link{RunModel_CemaNeigeGR4J_Glacier}} )}
+\item{FUN_MOD}{[function] hydrological model function (e.g. \code{\link{RunModel_GR4J}}, \code{\link{RunModel_CemaNeigeGR4J}} )}
 
 \item{InputsModel}{[object of class \emph{InputsModel}] see \code{\link{CreateInputsModel}} for details}
+
+\item{RelIce}{[numeric] vector of relative ice area in the elevation band. Mandatory in \code{\link{RunModel_CemaNeigeGR4J_Glacier}}, \code{\link{RunModel_CemaNeigeGR6J_Glacier}}. See details}
 
 \item{IndPeriod_WarmUp}{(optional) [numeric] index of period to be used for the model warm-up [-]. See details}
 
@@ -64,6 +66,7 @@ CreateRunOptions(FUN_MOD, InputsModel,
     \emph{Outputs_Sim      } \tab [character] character vector giving the requested outputs \cr
     \emph{Imax             } \tab [numeric] vector giving the maximal capacity of the GR5H interception store \cr
     \emph{MeanAnSolidPrecip} \tab [numeric] vector giving the annual mean of average solid precipitation for each layer [mm/y] \cr
+    \emph{RelIce           } \tab [numeric] vector giving the ice cover in a elevation band relative to the total area [-] \cr
   }
 }
 
@@ -71,6 +74,12 @@ CreateRunOptions(FUN_MOD, InputsModel,
 \details{
 Users wanting to use \code{FUN_MOD} functions that are not included in
 the package must create their own \code{RunOptions} object accordingly.
+
+## --- RelIce (madatory for the glacier module \code{\link{RunModel_CemaNeigeGR4J_Glacier}}, \code{\link{RunModel_CemaNeigeGR6J_Glacier}})
+
+
+This term describes how much of an elevation band is covered by ice relative to the total area of the basin. 
+For example, consider a basin where 13\% of the total area is covered by glaciers. The basin was divided into 5 elevation bands with equal area (NLayers = 5 (default) in \code{\link{CreateInputsModel}}). If 60\% of the glacier-covered area is in the highest elevation band (band 5), 30\% is in the second highest (band 4), and 10\% is in the third highest (band 3), then the relative ice area in band 5 would be 0.078. The relative ice areas would be RelIce = c(0, 0, 0, 0.013, 0.039, 0.078).
 
 ## --- IndPeriod_WarmUp and IndPeriod_Run
 

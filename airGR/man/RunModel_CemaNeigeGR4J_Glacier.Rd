@@ -9,7 +9,7 @@
 
 
 \description{
-Function which performs a single run for the CemaNeige-GR4J daily lumped model over the test period.
+Function which performs a single run for the RunModel_CemaNeigeGR4J_Glacier daily lumped model over the test period. The model is based on the GR4J rainfall-runoff model and the CemaNeige snow model. The model is run with the given parameter set and input data.
 }
 
 
@@ -87,6 +87,8 @@ For further details on the argument structures and initialisation options, see \
 \cr
 See \code{\link{RunModel_GR4J}} to look at the diagram of the hydrological model.
 }
+
+
 
 
 \examples{
