@@ -25,14 +25,15 @@ RunModel_CemaNeigeGR4J(InputsModel, RunOptions, Param)
 
 \item{Param}{[numeric] vector of 6 (or 8 parameters if \code{IsHyst = TRUE}, see \code{\link{CreateRunOptions}} for details)
   \tabular{ll}{
-    GR4J X1      \tab production store capacity [mm]                                          \cr
-    GR4J X2      \tab intercatchment exchange coefficient [mm/d]                              \cr
-    GR4J X3      \tab routing store capacity [mm]                                             \cr
-    GR4J X4      \tab unit hydrograph time constant [d]                                       \cr
-    CemaNeige X1 \tab weighting coefficient for snow pack thermal state [-]                   \cr
-    CemaNeige X2 \tab degree-day melt coefficient [mm/°C/d]                                   \cr
-    CemaNeige X3 \tab (optional) accumulation threshold [mm] (needed if \code{IsHyst = TRUE}) \cr
-    CemaNeige X4 \tab (optional) percentage (between 0 and 1) of annual snowfall defining the melt threshold [-] (needed if \code{IsHyst = TRUE}) \cr
+    GR4J X1         \tab production store capacity [mm]                                          \cr
+    GR4J X2         \tab intercatchment exchange coefficient [mm/d]                              \cr
+    GR4J X3         \tab routing store capacity [mm]                                             \cr
+    GR4J X4         \tab unit hydrograph time constant [d]                                       \cr
+    CemaNeige X1   \tab weighting coefficient for snow pack thermal state [-]                   \cr
+    CemaNeige X2   \tab degree-day melt coefficient [mm/°C/d]                                   \cr
+    Glacier Fi      \tab ice melting factor [mm/°C/d]                                            \cr
+    Glacier Tm      \tab ice melting threshold temperature [°C]                                  \cr
+    Glacier SWEth   \tab threshold amount of SWE on the glacier before ice melt occurs [mm]      \cr
   }}
 }
 
@@ -74,18 +75,37 @@ RunModel_CemaNeigeGR4J(InputsModel, RunOptions, Param)
     \emph{RunOptions$WarmUpQsim} \tab [numeric] series of simulated discharge (Q) on the warm-up period [mm/d] \cr
     \emph{RunOptions$Param     } \tab [numeric] parameter set parameter set used by the model                  \cr
     \emph{$StateEnd} \tab [numeric] states at the end of the run: store & unit hydrographs levels [mm], CemaNeige states [mm & °C]. See \code{\link{CreateIniStates}} for more details \cr
+    \emph{$StateEnd} \tab [numeric] states at the end of the run: store & unit hydrographs levels [mm], CemaNeige states [mm & °C]. See \code{\link{CreateIniStates}} for more details \cr
   }
 Refer to the provided references or to the package source code for further details on these model outputs.
 }
 
 
 \details{
+
+
+
+
+  The formula for calculating the daily ice melt, \code{Mi}, from glaciers is given by:
+  \deqn{M_i = \left\{
+    \begin{array}{ll}
+      F_i \times (T - T_m) \times A_i & \text{if } SWE \geq SWE_{th} \text{ and } T \geq T_m \\
+      0 & \text{if } SWE < SWE_{th} \text{ or } T < T_m
+    \end{array}
+  \right.}{M_i = {F_i*(T-T_m)*A_i   if SWE ≥ SWE_th  and T ≥ T_m
+0                                   if SWE < SWE_th  and T < T_m }}
+
+\cr
+\cr
+\if{html}{\figure{diagramGR4JGlacier-EN.png}{options: width="80\%" alt="Figure: diagramGR46JGlacier-EN.png"}}
+\if{latex}{\figure{diagramGR4JGlacier-EN.pdf}{options: width=6cm}}
+
 The choice of the CemaNeige version is explained in \code{\link{CreateRunOptions}}. \cr
 For further details on the model, see the references section. \cr
 For further details on the argument structures and initialisation options, see \code{\link{CreateRunOptions}}.
 \cr
 \cr
-See \code{\link{RunModel_GR4J}} to look at the diagram of the hydrological model.
+
 }
 
 

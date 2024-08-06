@@ -202,9 +202,9 @@ RunModel_CemaNeigeGR4J_Glacier <- function(InputsModel, RunOptions, Param) {
     total_ice_melt_glacier <- total_ice_melt$TotalIceMelt
 
     # just for the output:
-    ice_melts_layer <- lapply(ice_melts, function(df) {
-      df[IndPeriod2, ]
-    })
+    # ice_melts_layer <- lapply(ice_melts, function(df) {
+    #   df[IndPeriod2, ]
+    # })
 
     # Add the ice melt to the snow and rain
     CatchMeltAndPliq <- CatchMeltAndPliq + total_ice_melt_glacier
