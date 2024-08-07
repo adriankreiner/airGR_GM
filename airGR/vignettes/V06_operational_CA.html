@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Adrian Kreiner, Beartrice Marti, Sandro Hunziker, Tobias siegfried" />
+
+
+<title>Operational Hydrological Forecasts with GR4/6J-CemaNeige-Glacier Module in Glaciated Terrains using Data Assimilation</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">
+
+div.csl-bib-body { }
+div.csl-entry {
+clear: both;
+margin-bottom: 0em;
+}
+.hanging div.csl-entry {
+margin-left:2em;
+text-indent:-2em;
+}
+div.csl-left-margin {
+min-width:2em;
+float:left;
+}
+div.csl-right-inline {
+margin-left:2em;
+padding-left:1em;
+}
+div.csl-indent {
+margin-left: 2em;
+}
+</style>
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Operational Hydrological Forecasts with
+GR4/6J-CemaNeige-Glacier Module in Glaciated Terrains using Data
+Assimilation</h1>
+<h4 class="author">Adrian Kreiner, Beartrice Marti, Sandro Hunziker,
+Tobias siegfried</h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<div id="scope" class="section level2">
+<h2>Scope</h2>
+<p>The GR4J/GR6J-CemaNeige model developed by <span class="citation">Perrin, Michel, and Andréassian (2003)</span>, <span class="citation">Pushpalatha et al. (2011)</span> and <span class="citation">Valéry, Andréassian, and Perrin (2014)</span> is highly
+effective for simulating discharge in lowland and mountainous areas.
+However, it lacks a glacier component, making it unsuitable for modeling
+discharge in highly glaciated areas <span class="citation">Pokhrel et
+al. (2014)</span>.</p>
+<p>We propose a simple, robust, and effective glacier module that
+integrates perfectly into the GR4J/GR6J-CemaNeige model setup.</p>
+<p>In this vignette, we show the following:</p>
+<ol style="list-style-type: decimal">
+<li>Calculating basin-specific lapse rates and using them to distribute
+precipitation and temperature to the elevation bands used in the
+CemaNeige and glacier modules.</li>
+<li>Setting up the GR4J-CemaNeige-Glacier model in a highly glaciated
+catchment.</li>
+<li>Calibrating the GR4J-CemaNeige-Glacier model, including gridded snow
+water equivalent (SWE) data.</li>
+<li>Using data assimilation for the operational setup to improve the
+model’s initial condition for better discharge predictions.</li>
+<li>Operationally running ensemble forecasts with the ECMWF IFS ensemble
+product.</li>
+</ol>
+</div>
+<div id="old" class="section level2">
+<h2>OLD</h2>
+<p>Rainfall-runoff models that include a snow accumulation and melt
+module are still often calibrated using only discharge observations.
+This can result in poor snow modeling as the swnow module parameters can
+distorted in order to allow skilful discharge simulation.</p>
+<p>After the work of <span class="citation">Riboust et al.
+(2019)</span>, we propose now in <strong>airGR</strong> an improved
+version of the degree-day CemaNeige snow and accumulation module. This
+new version is based on a more accurate representation of the
+relationship that exists at the basin scale between the Snow Water
+Equivalent (SWE) and the Snow Cover Area (SCA). To do so, a linear
+SWE-SCA hysteresis, which represents the fact that snow accumulation is
+rather homogeneous on the basin and snow melt is more heterogeneous, was
+implemented.</p>
+<p>This new CemaNeige version has two more parameters to calibrate. It
+also presents the advantage of allowing using satellite snow data to
+constrain the calibration in addition to discharge. <span class="citation">Riboust et al. (2019)</span> show that while the
+simulated discharge is not significantly improved, the snow simulation
+is much improved. In addition, they show that the model is more robust
+(i.e. transferable in time) in terms of discharge, which has many
+implications for climate change impact studies.</p>
+<p>The configuration that was identified as optimal by <span class="citation">Riboust et al. (2019)</span> includes a CemaNeige
+module run on 5 elevation bands and an objective function determine by a
+composite function of KGE’ calculated on discharge (75 % weight) and
+KGE’ calculated on each elevation band (5 % for each).</p>
+<p>In this page, we show how to use and calibrate this new CemaNeige
+version.</p>
+</div>
+<div id="data-preparation" class="section level2">
+<h2>Data preparation</h2>
+<p>We load an example data set from the package. Please note that this
+data set includes MODIS data that was pre-calculated for 5 elevation
+bands and for which days with few data (more than 40 % cloud coverage)
+were assigned as missing values.</p>
+</div>
+<div id="loading-catchment-data" class="section level2">
+<h2>loading catchment data</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">data</span>(X0310010)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">summary</span>(BasinObs)</span></code></pre></div>
+</div>
+<div id="object-model-preparation" class="section level2">
+<h2>Object model preparation</h2>
+<p>We assume that the R global environment contains data and functions
+from the <a href="V01_get_started.html">Get Started</a> vignette.</p>
+<p>The calibration period has been defined from 2000-09-01 to
+2005-08-31, and the validation period from 2005-09-01 to 2010-07-31.
+CemaNeige will be used in coupling with GR4J in this vignette.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="do">## preparation of the InputsModel object</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>InputsModel <span class="ot">&lt;-</span> <span class="fu">CreateInputsModel</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>                                 <span class="at">DatesR =</span> BasinObs<span class="sc">$</span>DatesR, <span class="at">Precip =</span> BasinObs<span class="sc">$</span>P,</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>                                 <span class="at">PotEvap =</span> BasinObs<span class="sc">$</span>E, <span class="at">TempMean =</span> BasinObs<span class="sc">$</span>T,</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>                                 <span class="at">ZInputs =</span> <span class="fu">median</span>(BasinInfo<span class="sc">$</span>HypsoData),</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>                                 <span class="at">HypsoData =</span> BasinInfo<span class="sc">$</span>HypsoData, <span class="at">NLayers =</span> <span class="dv">5</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="do">## ---- calibration step</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## calibration period selection</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>Ind_Cal <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">which</span>(<span class="fu">format</span>(BasinObs<span class="sc">$</span>DatesR, <span class="at">format =</span> <span class="st">&quot;%Y-%m-%d&quot;</span>) <span class="sc">==</span> <span class="st">&quot;2000-09-01&quot;</span>), </span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>               <span class="fu">which</span>(<span class="fu">format</span>(BasinObs<span class="sc">$</span>DatesR, <span class="at">format =</span> <span class="st">&quot;%Y-%m-%d&quot;</span>) <span class="sc">==</span> <span class="st">&quot;2005-08-31&quot;</span>))</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## ---- validation step</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## validation period selection</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>Ind_Val <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">which</span>(<span class="fu">format</span>(BasinObs<span class="sc">$</span>DatesR, <span class="at">format =</span> <span class="st">&quot;%Y-%m-%d&quot;</span>) <span class="sc">==</span> <span class="st">&quot;2005-09-01&quot;</span>), </span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>               <span class="fu">which</span>(<span class="fu">format</span>(BasinObs<span class="sc">$</span>DatesR, <span class="at">format =</span> <span class="st">&quot;%Y-%m-%d&quot;</span>) <span class="sc">==</span> <span class="st">&quot;2010-07-31&quot;</span>))</span></code></pre></div>
+</div>
+</div>
+<div id="calibration-and-evaluation-of-the-new-cemaneige-module" class="section level1">
+<h1>Calibration and evaluation of the new CemaNeige module</h1>
+<p>In order to use the Linear Hysteresis, a new argument
+(<code>IsHyst</code>) is added in the <code>CreateRunOptions()</code>
+and <code>CreateCalibOptions()</code> functions and has to be set to
+<code>TRUE</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="do">## preparation of the RunOptions object for the calibration period</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>RunOptions_Cal <span class="ot">&lt;-</span> <span class="fu">CreateRunOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>                                   <span class="at">InputsModel =</span> InputsModel, <span class="at">IndPeriod_Run =</span> Ind_Cal,</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>                                   <span class="at">IsHyst =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="do">## preparation of the RunOptions object for the validation period</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>RunOptions_Val <span class="ot">&lt;-</span> <span class="fu">CreateRunOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>                                   <span class="at">InputsModel =</span> InputsModel, <span class="at">IndPeriod_Run =</span> Ind_Val,</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>                                   <span class="at">IsHyst =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="do">## preparation of the CalibOptions object</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>CalibOptions <span class="ot">&lt;-</span> <span class="fu">CreateCalibOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>                                   <span class="at">FUN_CALIB =</span> Calibration_Michel,</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>                                   <span class="at">IsHyst =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>In order to calibrate and assess the model performance, we will
+follow the recommendations of <span class="citation">Riboust et al.
+(2019)</span>. This is now possible in <strong>airGR</strong> with the
+added functionality that permits calculating composite criteria by
+combining different metrics.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="do">## efficiency criterion: 75 % KGE&#39;(Q) + 5 % KGE&#39;(SCA) on each of the 5 layers</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>InputsCrit_Cal  <span class="ot">&lt;-</span> <span class="fu">CreateInputsCrit</span>(<span class="at">FUN_CRIT =</span> <span class="fu">rep</span>(<span class="st">&quot;ErrorCrit_KGE2&quot;</span>, <span class="dv">6</span>),</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                                    <span class="at">InputsModel =</span> InputsModel, <span class="at">RunOptions =</span> RunOptions_Cal,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>                                    <span class="at">Obs =</span> <span class="fu">list</span>(BasinObs<span class="sc">$</span>Qmm[Ind_Cal],</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA1[Ind_Cal],</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA2[Ind_Cal],</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA3[Ind_Cal],</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA4[Ind_Cal],</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA5[Ind_Cal]),</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>                                    <span class="at">VarObs =</span> <span class="fu">list</span>(<span class="st">&quot;Q&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>),</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>                                    <span class="at">Weights =</span> <span class="fu">list</span>(<span class="fl">0.75</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>))</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>InputsCrit_Val  <span class="ot">&lt;-</span> <span class="fu">CreateInputsCrit</span>(<span class="at">FUN_CRIT =</span> <span class="fu">rep</span>(<span class="st">&quot;ErrorCrit_KGE2&quot;</span>, <span class="dv">6</span>),</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>                                    <span class="at">InputsModel =</span> InputsModel, <span class="at">RunOptions =</span> RunOptions_Val,</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>                                    <span class="at">Obs =</span> <span class="fu">list</span>(BasinObs<span class="sc">$</span>Qmm[Ind_Val],</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA1[Ind_Val],</span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA2[Ind_Val],</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA3[Ind_Val],</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA4[Ind_Val],</span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>                                               BasinObs<span class="sc">$</span>SCA5[Ind_Val]),</span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>                                    <span class="at">VarObs =</span> <span class="fu">list</span>(<span class="st">&quot;Q&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>, <span class="st">&quot;SCA&quot;</span>),</span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a>                                    <span class="at">Weights =</span> <span class="fu">list</span>(<span class="fl">0.75</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span>))</span></code></pre></div>
+<p>We can now calibrate the model.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="do">## calibration</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>OutputsCalib <span class="ot">&lt;-</span> <span class="fu">Calibration</span>(<span class="at">InputsModel =</span> InputsModel, <span class="at">RunOptions =</span> RunOptions_Cal,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                            <span class="at">InputsCrit =</span> InputsCrit_Cal, <span class="at">CalibOptions =</span> CalibOptions,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                            <span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                            <span class="at">FUN_CALIB =</span> Calibration_Michel)</span></code></pre></div>
+<p>Now we can run it on the calibration period and assess it.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="do">## run on the calibration period</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>OutputsModel_Cal <span class="ot">&lt;-</span> <span class="fu">RunModel_CemaNeigeGR4J</span>(<span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>                                           <span class="at">RunOptions =</span> RunOptions_Cal, </span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>                                           <span class="at">Param =</span> OutputsCalib<span class="sc">$</span>ParamFinalR)</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="do">## evaluation </span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>OutputsCrit_Cal <span class="ot">&lt;-</span> <span class="fu">ErrorCrit</span>(<span class="at">InputsCrit =</span> InputsCrit_Cal, <span class="at">OutputsModel =</span> OutputsModel_Cal)</span></code></pre></div>
+<p>Find below the performance of the model over the calibration
+period.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">str</span>(OutputsCrit_Cal, <span class="at">max.level =</span> <span class="dv">2</span>)</span></code></pre></div>
+<pre><code>## List of 7
+##  $ CritValue      : num 0.899
+##  $ CritName       : chr &quot;Composite&quot;
+##  $ CritBestValue  : num 1
+##  $ Multiplier     : num -1
+##  $ Ind_notcomputed: NULL
+##  $ CritCompo      :List of 3
+##   ..$ MultiCritValues : Named num [1:6] 0.919 0.705 0.847 0.88 0.874 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritNames  : Named chr [1:6] &quot;KGE2[Q]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritWeights: Named num [1:6] 0.75 0.05 0.05 0.05 0.05 0.05
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##  $ MultiCrit      :List of 6
+##   ..$ IC1:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC2:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC3:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC4:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC5:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC6:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##  - attr(*, &quot;class&quot;)= chr [1:2] &quot;Compo&quot; &quot;ErrorCrit&quot;</code></pre>
+<p>Now we can run the model on the validation period and assess it.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="do">## run on the validation period</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>OutputsModel_Val <span class="ot">&lt;-</span> <span class="fu">RunModel_CemaNeigeGR4J</span>(<span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>                                           <span class="at">RunOptions =</span> RunOptions_Val, </span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>                                           <span class="at">Param =</span> OutputsCalib<span class="sc">$</span>ParamFinalR)</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="do">## evaluation </span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>OutputsCrit_Val <span class="ot">&lt;-</span> <span class="fu">ErrorCrit</span>(<span class="at">InputsCrit =</span> InputsCrit_Val, <span class="at">OutputsModel =</span> OutputsModel_Val)</span></code></pre></div>
+<p>Find below the performance of the model over the validation
+period.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">str</span>(OutputsCrit_Val, <span class="at">max.level =</span> <span class="dv">2</span>)</span></code></pre></div>
+<pre><code>## List of 7
+##  $ CritValue      : num 0.903
+##  $ CritName       : chr &quot;Composite&quot;
+##  $ CritBestValue  : num 1
+##  $ Multiplier     : num -1
+##  $ Ind_notcomputed: NULL
+##  $ CritCompo      :List of 3
+##   ..$ MultiCritValues : Named num [1:6] 0.916 0.63 0.876 0.945 0.962 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritNames  : Named chr [1:6] &quot;KGE2[Q]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritWeights: Named num [1:6] 0.75 0.05 0.05 0.05 0.05 0.05
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##  $ MultiCrit      :List of 6
+##   ..$ IC1:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC2:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC3:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC4:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC5:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC6:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##  - attr(*, &quot;class&quot;)= chr [1:2] &quot;Compo&quot; &quot;ErrorCrit&quot;</code></pre>
+</div>
+<div id="comparison-with-the-performance-of-the-initial-cemaneige-version" class="section level1">
+<h1>Comparison with the performance of the initial CemaNeige
+version</h1>
+<p>Here we use the same InputsModel object and calibration and
+validation periods. However, we have to redefine the way we run the
+model (<code>RunOptions</code> argument), calibrate and assess it
+(<code>InputsCrit</code> argument). The objective function is only based
+on KGE’(Q). Note how we set the <code>IsHyst</code> argument to
+<code>FALSE</code> in the <code>CreateRunOptions()</code> and the
+<code>CreateCalibOptions()</code> functions.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="do">## preparation of RunOptions object</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>RunOptions_Cal_NoHyst <span class="ot">&lt;-</span> <span class="fu">CreateRunOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>                                          <span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>                                          <span class="at">IndPeriod_Run =</span> Ind_Cal,</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>                                          <span class="at">IsHyst =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>RunOptions_Val_NoHyst <span class="ot">&lt;-</span> <span class="fu">CreateRunOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>                                          <span class="at">InputsModel =</span> InputsModel, </span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>                                          <span class="at">IndPeriod_Run =</span> Ind_Val,</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>                                          <span class="at">IsHyst =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>InputsCrit_Cal_NoHyst <span class="ot">&lt;-</span> <span class="fu">CreateInputsCrit</span>(<span class="at">FUN_CRIT =</span> ErrorCrit_KGE2,</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>                                          <span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>                                          <span class="at">RunOptions =</span> RunOptions_Cal_NoHyst,</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>                                          <span class="at">Obs =</span> BasinObs<span class="sc">$</span>Qmm[Ind_Cal], <span class="at">VarObs =</span> <span class="st">&quot;Q&quot;</span>)</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a><span class="do">## preparation of CalibOptions object</span></span>
+<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a>CalibOptions_NoHyst <span class="ot">&lt;-</span> <span class="fu">CreateCalibOptions</span>(<span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a>                                          <span class="at">FUN_CALIB =</span> Calibration_Michel,</span>
+<span id="cb12-20"><a href="#cb12-20" tabindex="-1"></a>                                          <span class="at">IsHyst =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>We can now calibrate the model.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="do">## calibration</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>OutputsCalib_NoHyst <span class="ot">&lt;-</span> <span class="fu">Calibration</span>(<span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>                                   <span class="at">InputsCrit =</span> InputsCrit_Cal_NoHyst,</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>                                   <span class="at">RunOptions =</span> RunOptions_Cal_NoHyst,</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>                                   <span class="at">CalibOptions =</span> CalibOptions_NoHyst,</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>                                   <span class="at">FUN_MOD =</span> RunModel_CemaNeigeGR4J,</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>                                   <span class="at">FUN_CALIB =</span> Calibration_Michel)</span></code></pre></div>
+<p>And run it over the calibration and validation periods.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>OutputsModel_Cal_NoHyst <span class="ot">&lt;-</span> <span class="fu">RunModel_CemaNeigeGR4J</span>(<span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>                                                  <span class="at">RunOptions =</span> RunOptions_Cal_NoHyst,  </span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>                                                  <span class="at">Param =</span> OutputsCalib_NoHyst<span class="sc">$</span>ParamFinalR)</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>OutputsModel_Val_NoHyst <span class="ot">&lt;-</span> <span class="fu">RunModel_CemaNeigeGR4J</span>(<span class="at">InputsModel =</span> InputsModel,</span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>                                                  <span class="at">RunOptions =</span> RunOptions_Val_NoHyst, </span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>                                                  <span class="at">Param =</span> OutputsCalib_NoHyst<span class="sc">$</span>ParamFinalR)</span></code></pre></div>
+<p>In order to assess the model performance over the two periods, we
+will use the InputsCrit objects prepared before, which allow assessing
+also the performance in terms of snow simulation.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>OutputsCrit_Cal_NoHyst <span class="ot">&lt;-</span> <span class="fu">ErrorCrit</span>(<span class="at">InputsCrit =</span> InputsCrit_Cal,</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>                                    <span class="at">OutputsModel =</span> OutputsModel_Cal_NoHyst)</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>OutputsCrit_Val_NoHyst <span class="ot">&lt;-</span> <span class="fu">ErrorCrit</span>(<span class="at">InputsCrit =</span> InputsCrit_Val,</span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>                                    <span class="at">OutputsModel =</span> OutputsModel_Val_NoHyst)</span></code></pre></div>
+<p>We can check the performance over the calibration and the validation
+period.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">str</span>(OutputsCrit_Cal_NoHyst, <span class="at">max.level =</span> <span class="dv">2</span>)</span></code></pre></div>
+<pre><code>## List of 7
+##  $ CritValue      : num 0.836
+##  $ CritName       : chr &quot;Composite&quot;
+##  $ CritBestValue  : num 1
+##  $ Multiplier     : num -1
+##  $ Ind_notcomputed: NULL
+##  $ CritCompo      :List of 3
+##   ..$ MultiCritValues : Named num [1:6] 0.937 0.147 0.48 0.65 0.707 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritNames  : Named chr [1:6] &quot;KGE2[Q]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritWeights: Named num [1:6] 0.75 0.05 0.05 0.05 0.05 0.05
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##  $ MultiCrit      :List of 6
+##   ..$ IC1:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC2:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC3:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC4:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC5:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC6:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##  - attr(*, &quot;class&quot;)= chr [1:2] &quot;Compo&quot; &quot;ErrorCrit&quot;</code></pre>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">str</span>(OutputsCrit_Val_NoHyst, <span class="at">max.level =</span> <span class="dv">2</span>)</span></code></pre></div>
+<pre><code>## List of 7
+##  $ CritValue      : num 0.773
+##  $ CritName       : chr &quot;Composite&quot;
+##  $ CritBestValue  : num 1
+##  $ Multiplier     : num -1
+##  $ Ind_notcomputed: NULL
+##  $ CritCompo      :List of 3
+##   ..$ MultiCritValues : Named num [1:6] 0.878 0.159 0.363 0.495 0.593 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritNames  : Named chr [1:6] &quot;KGE2[Q]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; &quot;KGE2[SCA]&quot; ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##   ..$ MultiCritWeights: Named num [1:6] 0.75 0.05 0.05 0.05 0.05 0.05
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:6] &quot;IC1&quot; &quot;IC2&quot; &quot;IC3&quot; &quot;IC4&quot; ...
+##  $ MultiCrit      :List of 6
+##   ..$ IC1:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC2:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC3:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC4:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC5:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##   ..$ IC6:List of 7
+##   .. ..- attr(*, &quot;class&quot;)= chr [1:2] &quot;KGE2&quot; &quot;ErrorCrit&quot;
+##  - attr(*, &quot;class&quot;)= chr [1:2] &quot;Compo&quot; &quot;ErrorCrit&quot;</code></pre>
+<p>We can see above that the performance of the initial model is
+slightly better than the new one over the calibration period in terms of
+discharge, but also that the new version calibrated using SCA provides
+better performance in terms of snow. However, over the validation
+period, we see that the discharge simulated by the new version brings
+better performance (in addition to improved SCA also). This shows the
+interests of the combined use of a linear hysteresis and of SCA data for
+calibration in CemaNeige.</p>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
+<div id="ref-perrin_improvement_2003" class="csl-entry">
+Perrin, Charles, Claude Michel, and Vazken Andréassian. 2003.
+<span>“Improvement of a Parsimonious Model for Streamflow
+Simulation.”</span> <em>Journal of Hydrology</em> 279 (1-4): 275–89. <a href="https://doi.org/10.1016/S0022-1694(03)00225-7">https://doi.org/10.1016/S0022-1694(03)00225-7</a>.
+</div>
+<div id="ref-pokhrel_comparison_2014" class="csl-entry">
+Pokhrel, Bijay Kumar, Pierre Chevallier, Vazken Andréassian, Adnan Ahmad
+Tahir, Yves Arnaud, Luc Neppel, Om Ratna Bajracharya, and Kamal Prakash
+Budhathoki. 2014. <span>“Comparison of Two Snowmelt Modelling Approaches
+in the Dudh Koshi Basin (Eastern Himalayas, Nepal).”</span>
+<em>Hydrological Sciences Journal</em> 59 (8): 1507–18. <a href="https://doi.org/10.1080/02626667.2013.842282">https://doi.org/10.1080/02626667.2013.842282</a>.
+</div>
+<div id="ref-pushpalatha_downward_2011" class="csl-entry">
+Pushpalatha, Raji, Charles Perrin, Nicolas Le Moine, Thibault Mathevet,
+and Vazken Andréassian. 2011. <span>“A Downward Structural Sensitivity
+Analysis of Hydrological Models to Improve Low-Flow Simulation.”</span>
+<em>Journal of Hydrology</em> 411 (1–2): 66–76. <a href="https://doi.org/10.1016/j.jhydrol.2011.09.034">https://doi.org/10.1016/j.jhydrol.2011.09.034</a>.
+</div>
+<div id="ref-riboust_revisiting_2019" class="csl-entry">
+Riboust, Philippe, Guillaume Thirel, Nicolas Le Moine, and Pierre
+Ribstein. 2019. <span>“Revisiting a <span>Simple</span>
+<span>Degree</span>-<span>Day</span> <span>Model</span> for
+<span>Integrating</span> <span>Satellite</span> <span>Data</span>:
+<span>Implementation</span> of <span>Swe</span>-<span>Sca</span>
+<span>Hystereses</span>.”</span> <em>Journal of Hydrology and
+Hydromechanics</em> 67 (1): 70–81. <a href="https://doi.org/10.2478/johh-2018-0004">https://doi.org/10.2478/johh-2018-0004</a>.
+</div>
+<div id="ref-valery_as_2014" class="csl-entry">
+Valéry, Audrey, Vazken Andréassian, and Charles Perrin. 2014.
+<span>“’<span>As</span> Simple as Possible but Not Simpler’: What Is
+Useful in a Temperature-Based Snow-Accounting Routine? <span>Part</span>
+2 - <span>Sensitivity</span> Analysis of the <span>Cemaneige</span> Snow
+Accounting Routine on 380 Catchments.”</span> <em>Journal of
+Hydrology</em>, no. 517(0): 1176–87. <a href="https://doi.org/10.1016/j.jhydrol.2014.04.058">https://doi.org/10.1016/j.jhydrol.2014.04.058</a>.
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

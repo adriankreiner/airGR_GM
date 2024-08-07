@@ -17,7 +17,7 @@
                                Param,
                                CemaNeigeLayers = NULL, 
                                CatchMeltAndPliq = NULL,
-                               TotGlacMelt) {
+                               TotGlacMelt = NULL) {
 
   IndPeriod2 <- (length(RunOptions$IndPeriod_WarmUp)+1):LInputSeries
   FortranOutputs <- RunOptions$FortranOutputs$GR
