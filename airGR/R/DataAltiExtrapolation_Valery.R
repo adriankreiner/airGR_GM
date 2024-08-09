@@ -8,13 +8,25 @@ DataAltiExtrapolation_Valery <- function(DatesR,
   ##Altitudinal_gradient_functions_______________________________________________________________
   # ##unique_gradient_for_precipitation
   
-  if(is.null(Code_lapsrate)){
-    GradP <- 0.00041 #value from Valery PhD thesis page 126
-  } else if(Code_lapsrate == 15194){
-    GradP <- 0.0002424229 #value from CHELSA data for Ala Archa
-  } else if(Code_lapsrate == 16936){
-    GradP <-0.00043 #value from CHELSA data for Inflow Toktogul (noch anpassen)
-  } 
+  # if(is.null(Code_lapsrate)){
+  #   GradP <- 0.00041 #value from Valery PhD thesis page 126
+  # } else if(Code_lapsrate == 15194){
+  #   GradP <- 0.0002424229 #value from CHELSA data for Ala Archa
+  # } else if(Code_lapsrate == 16936){
+  #   GradP <-0.00043 #value from CHELSA data for Inflow Toktogul (noch anpassen)
+  # } 
+  
+  if (is.null(Code_lapsrate)) {
+    GradP <- 0.00041 # value from Valery PhD thesis page 126
+  } else {
+    lapsrastesP <- .LapseRateP
+    
+    if (!(Code_lapsrate %in% lapsrastesP$Code)) {
+      stop("Error: Code_lapsrate not found in the Code column of lapsrastesP.")
+    } else {
+      GradP <- lapsrastesP$GradP[lapsrastesP$Code == Code_lapsrate]
+    }
+  }
 
 
   ##Format_______________________________________________________________________________________
