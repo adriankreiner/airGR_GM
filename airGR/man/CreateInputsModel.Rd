@@ -19,7 +19,8 @@ CreateInputsModel(FUN_MOD, DatesR, Precip, PrecipScale = TRUE, PotEvap = NULL,
                   TempMean = NULL, TempMin = NULL, TempMax = NULL,
                   ZInputs = NULL, HypsoData = NULL, NLayers = 5,
                   Qupstream = NULL, LengthHydro = NULL, BasinAreas = NULL,
-                  QupstrUnit = "mm", verbose = TRUE)
+                  QupstrUnit = "mm", verbose = TRUE, 
+                  Code_lapsrate = NULL)
 
 \method{[}{InputsModel}(x, i)
 }
@@ -61,6 +62,9 @@ CreateInputsModel(FUN_MOD, DatesR, Precip, PrecipScale = TRUE, PotEvap = NULL,
 \item{x}{[InputsModel] object of class InputsModel}
 
 \item{i}{[integer] of the indices to subset a time series or [character] names of the elements to extract}
+
+\item{Code_lapsrate}{[integer] Basin code to use basin specific lapse rates. If not specified the lapse reates defined by Valerié et al., 2014 are used.}
+
 }
 
 
@@ -127,6 +131,18 @@ OutputsCrit <- ErrorCrit_NSE(InputsCrit = InputsCrit, OutputsModel = OutputsMode
 Laurent Coron
 }
 
+\references{
+\cr\cr
+Valéry, A., Andréassian, V. and Perrin, C. (2014).
+  "As simple as possible but not simpler": What is useful in a temperature-based snow-accounting routine?
+  Part 1 - Comparison of six snow accounting routines on 380 catchments.
+  Journal of Hydrology, 517(0), 1166-1175, \doi{10.1016/j.jhydrol.2014.04.059}.
+\cr\cr
+Valéry, A., Andréassian, V. and Perrin, C. (2014).
+  "As simple as possible but not simpler": What is useful in a temperature-based snow-accounting routine?
+  Part 2 - Sensitivity analysis of the Cemaneige snow accounting routine on 380 catchments.
+  Journal of Hydrology, 517(0), 1176-1187, \doi{10.1016/j.jhydrol.2014.04.058}.
+}
 
 \seealso{
 \code{\link{RunModel}}, \code{\link{CreateRunOptions}}, \code{\link{CreateInputsCrit}},

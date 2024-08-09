@@ -59,10 +59,11 @@
   ## ADD 
   if (!is.null(CatchMeltAndPliq)) {
     OutputsModel$CatchMeltAndPliq <- CatchMeltAndPliq
-  }
+  } 
+  
   if (!is.null(TotGlacMelt)) {
     OutputsModel$TotGlacMelt <- TotGlacMelt
-  }
+  } 
 
   return(OutputsModel)
 }

@@ -5,13 +5,28 @@ bibliography: V00_airgr_ref.bib
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteIndexEntry{Using CemaNeige with Hysteresis}
+  %\VignetteIndexEntry{Operational Hydrological Forecasts with GR4/6J-CemaNeige-Glacier Module in Glaciated Terrains using Data Assimilation}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, warning=FALSE, include=FALSE}
 library(airGR)
+
+library(sf)
+library(terra)
+library(zoo)
+library(stringr)
+library(tidyverse)
+library(units)
+library(tmap)
 load(system.file("vignettesData/vignetteCNHysteresis.rda", package = "airGR")) # TO DO: Change!! 
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/09_Evaluation/function_evaluation_v2.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/CreateInputsPert.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/DA_PF.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/Utils.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/RunModel_DA.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/05_Model/operational/functions_operational_AlaArcha.R")
+
 ```
 
 # Introduction
@@ -22,30 +37,204 @@ The GR4J/GR6J-CemaNeige model developed by @perrin_improvement_2003, @pushpalath
 
 We propose a simple, robust, and effective glacier module that integrates perfectly into the GR4J/GR6J-CemaNeige model setup.
 
-
 In this vignette, we show the following:
 
-1. Calculating basin-specific lapse rates and using them to distribute precipitation and temperature to the elevation bands used in the CemaNeige and glacier modules.
-2. Setting up the GR4J-CemaNeige-Glacier model in a highly glaciated catchment.
-3. Calibrating the GR4J-CemaNeige-Glacier model, including gridded snow water equivalent (SWE) data.
-4. Using data assimilation for the operational setup to improve the model's initial condition for better discharge predictions.
-5. Operationally running ensemble forecasts with the ECMWF IFS ensemble product.
+1.  General basin specific setup
+2.  Calculating basin-specific lapse rates and using them to distribute precipitation and temperature to the elevation bands used in the CemaNeige and glacier modules.
+3.  Setting up the GR4J-CemaNeige-Glacier model in a highly glaciated catchmenn
+4.  Calibrating the GR4J-CemaNeige-Glacier model, including gridded snow water equivalent (SWE) data.
+5.  Using data assimilation for the operational setup to improve the model's initial condition for better discharge predictions.
+6.  Operationally running ensemble forecasts with the ECMWF IFS ensemble product.
 
 ## Data preparation
-For this vignette, we need a digital elevation model (DEM). We are using the one from the **Shuttle Radar Topography Mission (SRTM)**, which can be downloaded from [Earth Explorer](https://hydrosolutions.github.io/caham_book/appendix_c_quick_guides.html#section-earth-explorer-download-srtm). We also need data for the glacier outlines, which can be downloaded from the Randolph [Glacier Inventory (RGI) v7.0](https://www.glims.org/RGI/). Additionally, we need the catchment area in m², basin latitude in radians, the basin code, and the basin river name.
+
+For this vignette, we need a digital elevation model (DEM). We are using the one from the **Shuttle Radar Topography Mission (SRTM)**, which can be downloaded from [Earth Explorer](https://hydrosolutions.github.io/caham_book/appendix_c_quick_guides.html#section-earth-explorer-download-srtm). We also need data for the glacier outlines, which can be downloaded from the Randolph [Glacier Inventory (RGI) v7.0](https://www.glims.org/RGI/). Additionally, we need the catchment area in m², basin latitude in radians, the basin code, and the basin river name. We also need the basin outlines, which can be obtained under [HydroBASINS](https://www.hydrosheds.org/products/hydrobasins).
+
+# 1. General basin specific setup
+
+In this section, we are calculating basin-specific characteristics needed for the hydrological model. From the DEM, we are calculating the hypsometric curve. We are extracting the latitude and basin area from the basin outlines. Using the DEM we also delineate the hydrological response units (HRUs) for the CemaNeige and glacier modules.
+
+## 1.1 Load data and calculate basin specific characteristics
+
+```{r, warning=FALSE}
+# data directories
+data_dir <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/vignette"
+dir_CHELSA <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/forcing/15194_AlaArcha/CHELSA_V21"
+dir_linreg <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/pentadal_forecasting_system/hindcast_results/20240527"
+
+# Projection UTM 42N
+utm42n <- "EPSG:32642"
+crs_project <- 4326
 
 
-# 1. Basin specific lapse rates
-For calculating basin-specific lapse rates for temperature and precipitation, we are using gridded daily CHELSA V21 (Climatologies at High Resolution for the Earth's Land Surface Areas) temperature and precipitation data from 1991 to 2020, along with the DEM. We can download the CHELSA V21 data with the
+# load the basin
+basin_latlon <- st_read(paste0(data_dir,"/15194_AlaArcha_latlon.shp"), quiet = TRUE)
+basin_utm <- st_transform(basin_latlon, utm42n)
 
-## 1.1 Downlaod gridded CHELSA V21 data
+# load DEM:
+dem_latlon <- terra::rast(paste0(data_dir,"/15194_DEM_latlon.tif")) # dem is in utm 42
+dem_utm <- terra::project(dem_latlon, utm42n)
+
+# Hypsometric curve: 
+getHypsometricCurve <- function(dem) {
+  elevation_values <- terra::values(dem)
+  elevation_values <- elevation_values[!is.na(elevation_values)]
+  percentiles <- c(0, seq(1, 99, by = 1), 100)
+  hypso_data <- stats::quantile(elevation_values, probs = percentiles / 100)
+  return(hypso_data)
+}
+HypsoData <- getHypsometricCurve(dem_utm)
+
+
+
+# Basin Information 
+Basin_code <- 15194
+river_name <- "AlaArcha"
+BasinArea_m2 <- as.numeric(st_area(basin_utm))
+
+basin_coords <- st_centroid(basin_latlon) |> st_coordinates()
+Basin_lat <- basin_coords[, "X"]
+
+Basin_Info <- list(
+  BasinCode = Basin_code,
+  BasinName = river_name,
+  BasinArea_m2 = BasinArea_m2,
+  BasinLat_rad = Basin_lat,
+  HypsoData = as.numeric(HypsoData))
+
+```
+
+## 1.2 HRU delineation
+
+Five elevation bands with equal areas are delineated using the hypsometric curve.
+
+```{r,fig.width=5, fig.height=4, warning=FALSE}
+Zlayer <- 5
+min_elev <- HypsoData[1]
+max_elev <- HypsoData[length(Basin_Info$HypsoData)]
+
+
+
+# HYPSOMETRIC CURVE
+# mask dem
+dem_masked <- dem_utm |> crop(basin_utm) |> mask(basin_utm)
+dem_masked_vec <- dem_masked[] |> na.omit()
+
+# NEW
+h_range <- c(HypsoData[1], HypsoData[21], HypsoData[41], HypsoData[61], HypsoData[81], HypsoData[101])
+# classify
+dem_utm_class <- classify(dem_utm, h_range)
+# polygonize
+dem_utm_class_poly <- as.polygons(dem_utm_class)
+dem_utm_class_poly_sf <- st_as_sf(dem_utm_class_poly)
+dem_utm_class_poly_sf <- dem_utm_class_poly_sf |>
+    mutate(layer = seq(nrow(dem_utm_class_poly_sf)))
+# clip and rename
+hru_shp_clipped_utm <-
+    st_intersection(dem_utm_class_poly_sf, basin_utm) |>
+    dplyr::select(layer, geometry)
+hru <- hru_shp_clipped_utm
+
+hru$name <- river_name
+zonalStat_Z <- exactextractr::exact_extract(dem_utm,hru,'mean', max_cells_in_memory = 3e+08, progress = FALSE)
+hru$Z <- zonalStat_Z
+
+# unique names in hru
+subbasin_names <- unique(hru$name)
+# loop through subbasin_names and add unique numbers to corresponding names
+for (idx in length(subbasin_names)) {
+  subbasin_sel <- hru |> dplyr::filter(name == subbasin_names[idx]) |> dplyr::arrange(Z)
+  subbasin_sel$hru_num <- (1:base::nrow(subbasin_sel))
+  subbasin_sel$name <- paste0(subbasin_sel$name,'_',subbasin_sel$hru_num)
+
+  if (idx == 1) {
+    res_subbasins <- subbasin_sel
+  } else {
+    res_subbasins <- res_subbasins |> dplyr::add_row(subbasin_sel)
+  }
+}
+
+hru_named_utm <- res_subbasins |> dplyr::select(-layer,-hru_num)
+hru_named_latlon <- hru_named_utm |> st_transform(crs = crs_project) |> st_make_valid()
+hru_named_utm |> plot()
+
+
+```
+
+## 1.3 Glacier area
+
+We are using the RGI V7 glacier dataset to calculate the glacier area in each elevation band. We need the term Ai (RelIce) explained in \code{\link{CreateRunOptions}} and used in the hydrological model \code{\link{RunModel_CemaNeigeGR4J_Glacier}}, which is a vector of relative ice area in the elevation band.
+
+This term describes how much of an elevation band is covered by ice relative to the total area of the basin. For example, consider a basin where 13% of the total area is covered by glaciers. The basin is divided into 5 elevation bands with equal area. If 60% of the glacier-covered area is in the highest elevation band (band 5), 30% is in the second highest (band 4), and 10% is in the third highest (band 3), then the relative ice area in band 5 would be 0.078. The relative ice areas would be RelIce = c(0, 0, 0, 0.013, 0.039, 0.078).
+
+```{r fig.width=5, fig.height=4, warning=FALSE}
+# load glacier
+glacier_merged <- st_read(paste0(data_dir,"/15194_Glacier.shp"), quiet = TRUE) # it is latlon, RGI V7
+glacier_utm <- st_transform(glacier_merged, utm42n)
+
+
+hru_named_utm <- hru_named_utm |>
+  mutate(Area_km2 = set_units(st_area(.), km^2))
+
+# Calculate glacier area in each elevation band
+glaciated_areas <- st_intersection(hru_named_utm, glacier_utm) |>
+  mutate(glaciated_area_km2 = set_units(st_area(.), km^2))
+
+# Aggregate glaciated areas by elevation band
+aggregated_data <- glaciated_areas |>
+  group_by(name) |>
+  summarise(glaciated_area_km2 = sum(glaciated_area_km2, na.rm = TRUE)) |>
+  rename(elev_band = name)
+
+glaciated_area_df <- data.frame(elev_band = hru_named_utm$name)
+# join with aggregated_data
+glaciated_area_df <- merge(glaciated_area_df, aggregated_data, by = "elev_band", all.x = TRUE)
+# replace Na with 0 
+glaciated_area_df[is.na(glaciated_area_df)] <- 0
+glaciated_area_df$glaciated_area_km2 <- set_units(glaciated_area_df$glaciated_area_km2, km^2)
+
+hru_named_utm_df <- as.data.frame(st_drop_geometry(hru_named_utm)) |>
+  select(elev_band = name, Area_km2)
+
+glaciated_area_df <- hru_named_utm_df |>
+  left_join(aggregated_data, by = "elev_band") |>
+  mutate(glaciated_area_km2 = replace_na(glaciated_area_km2, set_units(0, km^2)))
+
+
+# Create the final basin data frame
+basin_df <- data.frame(elev_band = hru_named_utm$name,
+                   soil_area = hru_named_utm$Area_km2 - glaciated_area_df$glaciated_area_km2,
+                   ice_area = glaciated_area_df$glaciated_area_km2,
+                   total_area = hru_named_utm$Area_km2)
+ 
+basin_df$rel_soil <- basin_df$soil_area/sum(basin_df$total_area)
+basin_df$rel_ice <- basin_df$ice_area/sum(basin_df$total_area)
+basin_df$h <- basin_df$Z
+
+# Convert relative ice and soil areas to numeric
+rel_ice <- as.numeric(basin_df$rel_ice)
+rel_soil <- as.numeric(basin_df$rel_soil)
+
+# Vizulization 
+tmap_mode("view")
+tm_shape(hru_named_utm) +
+  tm_polygons(col = "blue", border.col = "darkblue", alpha = 0.5) +
+  tm_shape(glaciated_areas) +
+  tm_polygons(col = "name", border.col = "darkred", alpha = 1)
+
+```
+
+# 2. Basin specific lapse rates
+
+For calculating basin-specific lapse rates for temperature and precipitation, we are using gridded daily CHELSA V21 (Climatologies at High Resolution for the Earth's Land Surface Areas) temperature and precipitation data from 1991 to 2020, along with the DEM.
+
+## 2.1 Downlaod gridded CHELSA V21 data
 
 We can download the CHELSA V21 data from 1991 to 2020 using the Rchelsa package. The data can be downloaded as daily data stored in yearly files and saved as .nc files in the directory defined by dir_CHELSA. See for more detail [Rchelsa](https://gitlabext.wsl.ch/karger/rchelsa)
 
-```{r}
+```{r, warning=FALSE, eval=FALSE}
 
-dir_CHELSA <- "path/to/CHELSA/data"
-  
+
 start_year <- 1990
 end_year <- 2020
 
@@ -76,260 +265,688 @@ for (idx in seq(n_years)) {
 }
 ```
 
-## 1.2 Calculate temperature-specific lapse rate
+## 2.2 Calculate temperature-specific lapse rate
 
-```{r}
-# The function get_lapse_rate_daily calculates the daily lapse rate (temperature gradient) using elevation and temperature data from raster files
-# Input: 
-get_lapsrate_daily <- function(file_path_raster, elevation_values) {
-  
-  raster_data <- terra::rast(file_path_raster)
-  n_layer <- nlyr(raster_data)
-  
+For each day and cell, we sort the air temperature by elevation. To do this, we need to resample the DEM to match the resolution of the CHELSA V21 raster and extract the temperature data downloaded from the previous step and sort by elevation for each cell from the resampled DEM. A linear function is fitted, with the slope representing the temperature lapse rate. This process is repeated daily over a 30-year period. The daily lapse rates are then averaged for each day of the year.
+
+```{r fig.width=5, fig.height=4, warning=FALSE}
+# Calculates daily lapse rates from a raster stack of temperature data, returning a vector of lapse rates for each day
+# Input:
+# file_path_raster: Path to the raster file with temperature data (CHELSA V21) stores as year for each da
+# elevation_values: Elevation values of the basin for each cell (NaN is outside the basin)
+# Output: 
+# slopes: Numeric vector with lapse rates (°C/m) for each day for a specific year (raster stack)
+get_T_lapsrate_daily <- function(file_path_raster, elevation_values) {
+  raster_all <- terra::rast(file_path_raster)
+  n_layer <- nlyr(raster_all)
   slopes <- numeric(n_layer)
   data_list <- list()
   # Loop through each layer (days) and extract values
   for (i in 1:n_layer) { #n_layer
-    raster_one <- raster_data[[i]]
+    raster_one <- raster_all[[i]]
     raster_value <- values(raster_one)
 
     temp_data <- data.frame(elevation = elevation_values[,1], value = raster_value[,1])
     # remove all rows with NA values --> outside of the basin 
     temp_data <- temp_data[!is.na(temp_data$elevation),]
-    
-    # calculate the slope of the specific day (= laps rate of this day)
+    # calculate the slope of the specific day (= lapse rate of this day)
     model <- lm(value ~ elevation, data = temp_data)
     slopes[i] <- coef(model)["elevation"]*1000
   }
   return(slopes)
 }
 
-# load the DEM 
+# load the downloaded CHELSA files 
+nc_files <- list.files(dir_CHELSA, pattern = ".nc$", full.names = TRUE)
+temp_files <- nc_files[str_detect(nc_files, "tas")]
+
+# Resample DEM to the same resolution as CHELSA V21 data.
+temperature_layer <- terra::rast(temp_files[1])[[1]]
+resampled_dem <- resample(dem_latlon, temperature_layer, method = "bilinear") 
+elevation_values <- terra::values(resampled_dem)
+
+# calculate the temperature lapse rates 
+lapsrate_t_years <- lapply(temp_files, function(x) get_T_lapsrate_daily(x, elevation_values))
+lapsrate_matrix <- do.call(rbind, lapsrate_t_years)
+
+daily_means <- round(colMeans(lapsrate_matrix)*-0.1, 3) # convert to 100m/C
+dates <- seq(as.Date("2020-01-01"), as.Date("2020-12-31"), by="day")
+days <- format(dates, "%d")
+months <- format(dates, "%m")
+daily_stats <- data.frame(
+  Day = days,
+  Month = months,
+  Mean = daily_means
+)
+
+# The temperature lapse rate is smoothed with a 30-day rolling mean
+extend_and_smooth_data <- function(data, year = 2020, window_size = 30) {
+  data <- data |> mutate(Date = as.Date(paste(year, Month, Day, sep = "-")))
+  
+  # For Rolling mean 
+  December <- filter(data, Month == "12")
+  December$Date <- December$Date %m-% years(1)
+  January <- filter(data, Month == "01")
+  January$Date <- January$Date %m+% years(1)
+  data_extended <- rbind(December, data, January)
+
+  # Smooth the data
+  data_extended$Mean_smooth <- zoo::rollmean(data_extended$Mean, window_size, fill = NA, align = 'center')
+  # Filter out the extended parts
+  data_final <- filter(data_extended, Date >= as.Date(paste(year, "01-01", sep = "-")), 
+                       Date <= as.Date(paste(year, "12-31", sep = "-")))
+  
+  # Select and rename the necessary columns
+  data_final <- select(data_final, Day, Month, Mean_smooth) |>
+    rename(Mean = Mean_smooth) |>
+    mutate(Mean = round(Mean, 3)) |>  # round to 3 digits
+    mutate(Min = 0, Max = 0)  # Reset Min and Max as placeholders ( do not need for GR4J, GR6J model in the current implementation)
+  return(data_final)
+}
+
+daily_stats_smoothed <- extend_and_smooth_data(daily_stats)
+# write.table(daily_stats_smoothing_finished, file = "../LapsrateT_daily_1990_2019_InflowToktogul_smoothing30.txt", row.names = FALSE, quote = FALSE, sep = ",", col.names = TRUE)
+
+# Visualization 
+daily_stats_smoothing_plot <-daily_stats_smoothed |>
+  mutate(Date = as.Date(paste("2020", Month, Day, sep = "-"), format = "%Y-%m-%d"))
+
+ggplot() +
+  geom_line(data = daily_stats_smoothing_plot, aes(x = Date, y = Mean, colour = "Laps rate T"), color = "darkred", linewidth = 1.5) +
+  labs(title = river_name,
+       x = "Date",
+       y = "Laps Rate [°C/100m]")+scale_x_date(date_breaks = "1 month", date_labels = "%b")+
+  theme_bw() 
+
+```
+
+Now the temperature lapse rate data saved as a CSV file has to be included in the UtilsCemaNeige.R file with a name, for example: .GradT_Interpol_15194 (open for improvement). In the function DataAltiExtrapolation_Valery.R, add the temperature lapse rate. Then in the function CreateInputsModel.R, please provide the Code_lapseRate.
+
+## 2.3 Calculate precipitation-specific lapse rate
+
+To account for the effect of altitude in estimating precipitation, we chose a different method than the one used for air temperatures: a multiplicative correction rather than the traditional additive correction. Precipitation data is either positive or zero, and using an additive method would not preserve dry events. The correction applied should also depend on the amount of precipitation that has fallen:
+
+$$P_i = P_0 \exp(\beta_{\text{Altitude}} (Z_i - Z_0))$$
+
+Where $P_i$ [mm/d] is the precipitation at elevation $Z_i$ [m a.s.l.], $P_0$ [mm/d] is the mean precipitation over the basin mean elevation at $Z_0$ [masl], and $\beta_{\text{Altitude}}$ [m\textsuperscript{-1}] is the altitudinal correction factor for precipitation.
+
+The precipitation lapse rate is calculated by first determining the 30-year mean precipitation for each cell. With the resampled DEM, each precipitation cell is given an elevation. Precipitation values above 4000m are not considered, and constant precipitation is assumed at that altitude. The equation above was then used to fit the altitudinal correction factor for precipitation to the elevation-dependent precipitation data.
+
+```{r fig.width=5, fig.height=4}
+# Calculates total lapse rates from a raster stack of precipitation data, returning a vector of lapse rates for each day
+# Input:
+# file_path_raster: Path to the raster file with temperature data (CHELSA V21) stores as year for each day
+# elevation_values: Elevation values of the basin for each cell (NaN is outside the basin)
+# Output: elevation dependend precipitation as mean in mm/a for the basin over the input period (specified in the file_path with multiple yearly files)
+get_P_lapsrate <- function(file_path, elevation_values) {
+
+  raster_allall <- do.call(c, lapply(file_path, terra::rast))
+  Tot_period_mean <- terra::app(raster_allall, fun=mean, by=1:nlyr(raster_allall))* 365 # 30 year mean 
+  
+  raster_value <- values(Tot_period_mean)
+  temp_data <- data.frame(elevation = elevation_values[,1], value = raster_value[,1])
+  temp_data <- temp_data[!is.na(temp_data$elevation),]
+  
+  # Linear regression 
+  model <- lm(value ~ elevation, data = temp_data)
+  slopes <- coef(model)["elevation"]*1000 # per thousand meter 
+  return(temp_data)
+}
+
+# Get the precipitation mean over the total period and sort it by elevation.
+pr_files <- nc_files[str_detect(nc_files, "pr")]
+lapsrate_p_data <- get_P_lapsrate(pr_files, elevation_values)
+lapsrate_p_data <- lapsrate_p_data[order(lapsrate_p_data$elevation),]
+
+# Do not consider values above 4000m
+P_elev_data_4000 <- lapsrate_p_data |>
+  filter(elevation <= 4000)
+
+P_elev_data_bigger4000 <- lapsrate_p_data |>
+  filter(elevation > 4000)
+
+Z0 <- median(Basin_Info$HypsoData)
+# getting P0 : Linear interpolation from closest values
+closest_points <- P_elev_data_4000 |> 
+  arrange(abs(elevation - Z0)) |> 
+  slice(1:2)
+P0 <- approx(closest_points$elevation, closest_points$value, xout = Z0)$y
+
+model <- nls(value ~ P0 * exp(k * (elevation - Z0)), data = P_elev_data_4000, start = list(k = 0.00046))
+k_value <- coef(model)['k']
 
 
-# DEM at same resolutin than CHELSA V21 data 
-temp_one_firstlayer <- terra::rast(temp_files[1])[[1]]
-resampled_dem <- terra::resample(dem_latlon, temp_one_firstlayer, method = "bilinear")
-elevation_values <- values(resampled_dem)
+# Visualization 
+elevation_seq <- seq(min(lapsrate_p_data$elevation),4000, length.out = 100)
+predicted_values <- P0 * exp(k_value * (elevation_seq - Z0))
+plot_data <- data.frame(Elevation = elevation_seq, Predicted_Value = predicted_values)
+value_at_max_elevation <- plot_data$Predicted_Value[nrow(plot_data)]
 
-lapsrate_t <- get_lapsrate_daily(temp_files[1], elevation_values)
-lapsrate_t_years <- lapply(temp_files, function(x) get_lapsrate_daily(x, elevation_values))
+new_row <- data.frame(Elevation = 4700, Predicted_Value = value_at_max_elevation)
+plot_data <- rbind(plot_data, new_row)
+
+
+ggplot() +
+  geom_point(data = P_elev_data_bigger4000, aes(x = elevation, y = value, color = "Cells > 4000m"))+
+  geom_point(data = P_elev_data_4000, aes(x = elevation, y = value, color = "Cells < 4000m"))+
+  geom_line(data = plot_data, aes(x = Elevation, y = Predicted_Value, color = "P lapse rate"))+
+  labs(title =river_name, x = "Elevation [m a.s.l.]", y = "Mean P [mm/a]") +
+  theme_bw()+
+  scale_color_manual(
+    name = "",  # Legend title (blank if not needed)
+    values = c("Cells > 4000m" = "#FF6347", "Cells < 4000m" = "#435A66", "P lapse rate" = "black")
+  )
+```
+
+The altitudinal correction factor can now be included in DataAltiExtrapolation_Valery.R and called with CreateInputsModel.R using the Code_lapseRate (= Basincode).
+
+# 3. Data preparation
+
+
+
+## 3.1 Discharge data 
+We are loading the discharge data for all of Kyrgyzstan and filtering it for a specific basin code. Then, we convert the discharge using the basin area to change the units from m3/s to mm/d. Since we only need discharge values up to 2023-12-31, we are filtering for this date.
+```{r}
+
+Q_obs <- read_csv(paste0(data_dir,"/runoff_day.csv"), show_col_types = FALSE)
+
+Q_obs <- Q_obs |>
+  filter(code == Basin_code) |>
+  mutate(
+    date = as.Date(date), 
+    Qmm = discharge/Basin_Info$BasinArea_m2*1000*60*60*24) |>
+  filter(date <= as.Date("2023-12-31"))
+
+ggplot(data = Q_obs, aes(x = date, y = Qmm)) +
+  geom_line() +
+  labs(title = river_name, x = "Date", y = "Discharge [mm/day]") +
+  theme_bw()
+
 ```
 
 
+## 3.2 Forcing data 
+```{r}
 
-## OLD 
-Rainfall-runoff models that include a snow accumulation and melt module are still often calibrated using only discharge observations. This can result in poor snow modeling as the swnow module parameters can distorted in order to allow skilful discharge simulation.
+ERA5QM <- read_csv(paste0(data_dir,"/HRU00003_1979_2023_mapped.csv"), show_col_types = FALSE)
+ERA5QM <- ERA5QM[,-1]
+# wide format with the names then from the column as code and ine from the value
+ERA5QM_long <- ERA5QM |>
+  pivot_longer(
+    cols = -date, 
+    names_to = "code", 
+    values_to = "value") |>
+  filter(code %in% c(as.character(Basin_code),paste0(as.character(Basin_code),".1")))
 
-After the work of @riboust_revisiting_2019, we propose now in **airGR** an improved version of the degree-day CemaNeige snow and accumulation module. This new version is based on a more accurate representation of the relationship that exists at the basin scale between the Snow Water Equivalent (SWE) and the Snow Cover Area (SCA). To do so, a linear SWE-SCA hysteresis, which represents the fact that snow accumulation is rather homogeneous on the basin and snow melt is more heterogeneous, was implemented.
 
-This new CemaNeige version has two more parameters to calibrate. It also presents the advantage of allowing using satellite snow data to constrain the calibration in addition to discharge. @riboust_revisiting_2019 show that while the simulated discharge is not significantly improved, the snow simulation is much improved. In addition, they show that the model is more robust (i.e. transferable in time) in terms of discharge, which has many implications for climate change impact studies.
+# wide format 
+ERA5QM_wide <- ERA5QM_long |>
+  pivot_wider(names_from = code, values_from = value) |>
+  rename(Temp = as.character(Basin_code),
+         Ptot = paste0(as.character(Basin_code),".1")) |>
+  left_join(Q_obs[, c("date", "Qmm")], by = "date") |>
+  filter(date >= as.Date("2000-01-01")) |>
+  arrange(date)
 
-The configuration that was identified as optimal by @riboust_revisiting_2019 includes a CemaNeige module run on 5 elevation bands and an objective function determine by a composite function of KGE' calculated on discharge (75 % weight) and KGE' calculated on each elevation band (5 % for each).
+PET_ERA5QM <- PE_Oudin(JD = as.POSIXlt(ERA5QM_wide$date)$yday +1,
+                    Temp = ERA5QM_wide$Temp,
+                    Lat = Basin_lat, LatUnit = "rad")
 
-In this page, we show how to use and calibrate this new CemaNeige version.
 
-## Data preparation
+basinObsTS <- ERA5QM_wide
+basinObsTS$date <- as.POSIXct(ERA5QM_wide$date, format = "%Y%m%d", tz = "UTC")
+basinObsTS$PET <- PET_ERA5QM
 
-We load an example data set from the package. Please note that this data set includes MODIS data that was pre-calculated for 5 elevation bands and for which days with few data (more than 40 % cloud coverage) were assigned as missing values.
 
-## loading catchment data
-
-```{r, warning=FALSE, eval=FALSE}
-data(X0310010)
-summary(BasinObs)
 ```
 
-## Object model preparation
+## 3.3 SWE data extraction
+We use daily gridded snow water equivalent (SWE) data from 2000 to 2023 with a spatial resolution of 500 m for calibration. We need to prepare the data by extracting the mean of each elevation band. In the current version, the SWE files are stored as daily files, where the abbreviation 1990_0 stands for the date 1999-09-01.
 
-We assume that the R global environment contains data and functions from the [Get Started](V01_get_started.html) vignette.
+```{r, eval = FALSE}
+swe_files <- list.files("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/swe/SWE_from_Joel_version2024/spatial_swe", full.names = TRUE)
 
-The calibration period has been defined from 2000-09-01 to 2005-08-31, and the validation period from 2005-09-01 to 2010-07-31. CemaNeige will be used in coupling with GR4J in this vignette.
-
-```{r, warning=FALSE, eval=FALSE}
-## preparation of the InputsModel object
-InputsModel <- CreateInputsModel(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                 DatesR = BasinObs$DatesR, Precip = BasinObs$P,
-                                 PotEvap = BasinObs$E, TempMean = BasinObs$T,
-                                 ZInputs = median(BasinInfo$HypsoData),
-                                 HypsoData = BasinInfo$HypsoData, NLayers = 5)
-
-## ---- calibration step
-
-## calibration period selection
-Ind_Cal <- seq(which(format(BasinObs$DatesR, format = "%Y-%m-%d") == "2000-09-01"), 
-               which(format(BasinObs$DatesR, format = "%Y-%m-%d") == "2005-08-31"))
+swe_files <- swe_files[swe_files |> str_detect(".tif$")]
+swe_files_sorted <- mixedsort(swe_files)
 
 
-## ---- validation step
+number_of_days <- length(swe_files) # Subtract 1 because we start counting from the initial date
 
-## validation period selection
-Ind_Val <- seq(which(format(BasinObs$DatesR, format = "%Y-%m-%d") == "2005-09-01"), 
-               which(format(BasinObs$DatesR, format = "%Y-%m-%d") == "2010-07-31"))
+date_vec <- seq(ymd("1999-09-01"), length.out = number_of_days, by = "day") |>
+  as_tibble() |>
+  rename(date = value)
+
+for (idx in seq(length(swe_files_sorted))) {
+  swe_nc <- raster::brick(swe_files_sorted[idx]) # using raster package for the moment
+  # extract data of 1 slice
+  swe_ts_idx <- swe_nc |> exact_extract(hru_named_utm, 'mean', force_df = TRUE)
+  swe_ts_idx_tbl <- swe_ts_idx |> as.matrix() |> t() |> as_tibble()
+  if (idx==1) {
+    swe_Joel <- swe_ts_idx_tbl
+  } else {
+    swe_Joel <- swe_Joel |> add_row(swe_ts_idx_tbl)
+  }
+}
+
+
+swe_Joel <- date_vec |> add_column(swe_Joel)
+
+write.csv(swe_Joel,paste0(data_dir,"/Swe_Joel_v2024_CemaNeige5Bands.csv"), row.names = FALSE)
 ```
 
-# Calibration and evaluation of the new CemaNeige module
+## 3.4 SWE data visualization 
 
-In order to use the Linear Hysteresis, a new argument (`IsHyst`) is added in the `CreateRunOptions()` and `CreateCalibOptions()` functions and has to be set to `TRUE`.
+```{r}
+swe_Joel <- read_csv(paste0(data_dir, "/Swe_Joel_v2024_CemaNeige5Bands.csv"), show_col_types = FALSE)
+
+basinObsTS_SWE <- basinObsTS %>%
+  filter(date <= max(swe_Joel$date))
+
+
+basinObsTS_SWE$SWE1 <- swe_Joel$V1
+basinObsTS_SWE$SWE2 <- swe_Joel$V2
+basinObsTS_SWE$SWE3 <- swe_Joel$V3
+basinObsTS_SWE$SWE4 <- swe_Joel$V4
+basinObsTS_SWE$SWE5 <- swe_Joel$V5
+
+
+```
+
+
+## 3.5 Load prepared foring data 
+
+```{r}
+base::load(paste0(data_dir,"/basinObsTS_SWE.RData"))
+summary(basinObsTS_SWE, digits = 2)
+MeanAnSolidPrecip <- c(361,361,361,361,361) 
+
+
+inputsModel <- airGR::CreateInputsModel(FUN_MOD       = RunModel_CemaNeigeGR4J_Glacier, 
+                                        DatesR        = basinObsTS_SWE$date,
+                                        Precip        = basinObsTS_SWE$Ptot, 
+                                        PotEvap       = basinObsTS_SWE$PET,
+                                        TempMean      = basinObsTS_SWE$Temp, 
+                                        HypsoData     = Basin_Info$HypsoData,
+                                        ZInputs       = median(Basin_Info$HypsoData),
+                                        NLayers       = 5,
+                                        Code_lapsrate = Basin_Info$BasinCode, 
+                                        verbose       = FALSE)
+
+```
+
+# 4. Hydrological model
+
+## 4.1 Model calibration
+
+We are calibrating our model from 2001 to the end of 2015. We can choose between different error criteria for model calibration (e.g., `ErrorCrit_NSE`, `ErrorCrit_KGE`, `ErrorCrit_KGE2`). It is also possible to specify custom error criteria. We chose a one-year warmup period.
+
+It is also important to iterate, use different starting positions, and not always calibrate all parameters at once. Different optimization algorithms can also be tested. See vignette V02.1_param_optim for more information.
+
+We are creating the run options. If you choose a model that includes a glacier module, such as RunModel_CemaNeigeGR4J_Glacier or RunModel_CemaNeigeGR6J_Glacier, you must include the relative ice area from section 1.3.
 
 ```{r, warning=FALSE, eval=FALSE}
-## preparation of the RunOptions object for the calibration period
-RunOptions_Cal <- CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                   InputsModel = InputsModel, IndPeriod_Run = Ind_Cal,
-                                   IsHyst = TRUE)
 
-## preparation of the RunOptions object for the validation period
-RunOptions_Val <- CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                   InputsModel = InputsModel, IndPeriod_Run = Ind_Val,
-                                   IsHyst = TRUE)
+start_cal <- "20010101"
+end_cal <- "20161231"
+indRun_cal <- seq(from = which(format(basinObsTS_SWE$date, format = "%Y%m%d") == start_cal),
+                 to   = which(format(basinObsTS_SWE$date, format = "%Y%m%d") == end_cal))
 
-## preparation of the CalibOptions object
-CalibOptions <- CreateCalibOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
+warmup_years <- 1
+warmup <- c((indRun_cal[1]-warmup_years*365):(indRun_cal[1]-1))
+
+
+
+runOptions_cal <- airGR::CreateRunOptions(FUN_MOD           = RunModel_CemaNeigeGR4J_Glacier,
+                                          InputsModel       = inputsModel,
+                                          IndPeriod_Run     = indRun_cal,
+                                          IniStates         = NULL,
+                                          IniResLevels      = NULL,
+                                          IndPeriod_WarmUp  = warmup,
+                                          MeanAnSolidPrecip = MeanAnSolidPrecip, 
+                                          RelIce            = rel_ice)
+
+
+inputsCrit_cal <- airGR::CreateInputsCrit(FUN_CRIT    = ErrorCrit_NSE,
+                                          InputsModel = inputsModel,
+                                          RunOptions  = runOptions_cal,
+                                          Obs         = basinObsTS_SWE$Qmm[indRun_cal])
+
+
+nbands <- 5
+weight_SWE <- 0.05
+weight_Q <- 1 - (weight_SWE * nbands)
+weights <- c(weight_Q, rep(weight_SWE, nbands), rep(0, 5-nbands))
+
+
+SearchRanges <- matrix(c(10,  -35, 0.05, 0.5, 0, 0,  20, -5,  0,
+                         4000, 35, 2000, 40, 1, 20,  0,  5, 100 ), nrow = 2, byrow = TRUE)
+
+
+inputsCrit_cal  <- CreateInputsCrit(FUN_CRIT = rep("ErrorCrit_NSE", nbands+1),
+                                    InputsModel = inputsModel, 
+                                    RunOptions = runOptions_cal,
+                                    Obs = list(basinObsTS_SWE$Qmm[indRun_cal],
+                                               basinObsTS_SWE$SWE1[indRun_cal],
+                                               basinObsTS_SWE$SWE2[indRun_cal],
+                                               basinObsTS_SWE$SWE3[indRun_cal],
+                                               basinObsTS_SWE$SWE4[indRun_cal],
+                                               basinObsTS_SWE$SWE4[indRun_cal]),
+                                    VarObs = list("Q", "SWE", "SWE", "SWE", "SWE", "SWE"),
+                                    Weights = weights)
+
+
+# param_matrix <- matrix(param, nrow = 1, ncol = 9, byrow = TRUE)
+# calibOptions <- CreateCalibOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+#                                    FUN_CALIB = Calibration_Michel,
+#                                    SearchRanges = SearchRanges, 
+#                                    StartParamList = param_matrix)
+calibOptions <- CreateCalibOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
                                    FUN_CALIB = Calibration_Michel,
-                                   IsHyst = TRUE)
+                                   SearchRanges = SearchRanges)
+
+
+outputsCalib <- Calibration_Michel(InputsModel = inputsModel,
+                                   RunOptions = runOptions_cal,
+                                   InputsCrit = inputsCrit_cal,
+                                   CalibOptions = calibOptions,
+                                   FUN_MOD = RunModel_CemaNeigeGR4J_Glacier)
+
+param_new <- outputsCalib$ParamFinalR
+
 ```
 
-In order to calibrate and assess the model performance, we will follow the recommendations of @riboust_revisiting_2019. This is now possible in **airGR** with the added functionality that permits calculating composite criteria by combining different metrics.
+## 4.2 Model validation
 
-```{r, warning=FALSE, eval=FALSE}
-## efficiency criterion: 75 % KGE'(Q) + 5 % KGE'(SCA) on each of the 5 layers
-InputsCrit_Cal  <- CreateInputsCrit(FUN_CRIT = rep("ErrorCrit_KGE2", 6),
-                                    InputsModel = InputsModel, RunOptions = RunOptions_Cal,
-                                    Obs = list(BasinObs$Qmm[Ind_Cal],
-                                               BasinObs$SCA1[Ind_Cal],
-                                               BasinObs$SCA2[Ind_Cal],
-                                               BasinObs$SCA3[Ind_Cal],
-                                               BasinObs$SCA4[Ind_Cal],
-                                               BasinObs$SCA5[Ind_Cal]),
-                                    VarObs = list("Q", "SCA", "SCA", "SCA", "SCA", "SCA"),
-                                    Weights = list(0.75, 0.05, 0.05, 0.05, 0.05, 0.05))
+```{r fig.width=7, fig.height=7}
+load("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/13_Parameter/param_ModelC_it4.RData")
 
-InputsCrit_Val  <- CreateInputsCrit(FUN_CRIT = rep("ErrorCrit_KGE2", 6),
-                                    InputsModel = InputsModel, RunOptions = RunOptions_Val,
-                                    Obs = list(BasinObs$Qmm[Ind_Val],
-                                               BasinObs$SCA1[Ind_Val],
-                                               BasinObs$SCA2[Ind_Val],
-                                               BasinObs$SCA3[Ind_Val],
-                                               BasinObs$SCA4[Ind_Val],
-                                               BasinObs$SCA5[Ind_Val]),
-                                    VarObs = list("Q", "SCA", "SCA", "SCA", "SCA", "SCA"),
-                                    Weights = list(0.75, 0.05, 0.05, 0.05, 0.05, 0.05))
+start_val <- "20160101"
+end_val <- "20231231"
+indRun_val <- seq(from = which(format(basinObsTS_SWE$date, format = "%Y%m%d") == start_val),
+             to   = which(format(basinObsTS_SWE$date, format = "%Y%m%d") == end_val))
+
+warmup <- c((indRun_val[1]-2*365):(indRun_val[1]-1))
+
+runOptions_val <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                                    InputsModel = inputsModel,
+                                    IndPeriod_Run = indRun_val,
+                                    IniStates        = NULL,
+                                    IniResLevels     = NULL,
+                                    IndPeriod_WarmUp = warmup,
+                                    MeanAnSolidPrecip = MeanAnSolidPrecip,
+                                    IsHyst = FALSE,
+                                    verbose = FALSE, 
+                                    RelIce = rel_ice)
+
+runResults_val <- RunModel_CemaNeigeGR4J_Glacier(InputsModel   = inputsModel,
+                                                      RunOptions  = runOptions_val,
+                                                      Param       = param)
+runResults_df <- tibble(Date = as.Date(runResults_val$DatesR), Qsim = runResults_val$Qsim)
+
+plot(runResults_val, Qobs = basinObsTS_SWE$Qmm[indRun_val])
+
+inputsCrit_val <- airGR::CreateInputsCrit(FUN_CRIT    = ErrorCrit_NSE,
+                                          InputsModel = inputsModel,
+                                          RunOptions  = runOptions_val,
+                                          Obs         = basinObsTS_SWE$Qmm[indRun_val])
+    
+ErrorCrit_val <- ErrorCrit(InputsCrit = inputsCrit_val,
+                                    OutputsModel = runResults_val)
+NSE_val <- ErrorCrit_val$CritValue
 ```
 
-We can now calibrate the model.
 
-```{r, warning=FALSE, eval=FALSE}
-## calibration
-OutputsCalib <- Calibration(InputsModel = InputsModel, RunOptions = RunOptions_Cal,
-                            InputsCrit = InputsCrit_Cal, CalibOptions = CalibOptions,
-                            FUN_MOD = RunModel_CemaNeigeGR4J,
-                            FUN_CALIB = Calibration_Michel)
+## 4.3 Visualization
+
+```{r fig.width=5, fig.height=4}
+# Visualization 
+WaterInput_hydrograph <- tibble(
+  date = as.Date(runResults_val$DatesR),
+  icemelt = runResults_val$TotGlacMelt,
+  icemelt_snowmelt_liquidrain = runResults_val$CatchMeltAndPliq
+) |>
+  mutate(month = month(date), year = year(date)) |>
+  group_by(month, year) |>
+  summarise(
+    icemelt = mean(icemelt, na.rm = TRUE),
+    icemelt_snowmelt_liquidrain = mean(icemelt_snowmelt_liquidrain, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  group_by(month) |>
+  summarise(
+    icemelt = mean(icemelt, na.rm = TRUE),
+    icemelt_snowmelt_liquidrain = mean(icemelt_snowmelt_liquidrain, na.rm = TRUE)
+  ) |>
+  ungroup()
+
+IceMelt_percentage <- sum(WaterInput_hydrograph$icemelt) / sum(WaterInput_hydrograph$icemelt_snowmelt_liquidrain) * 100
+
+Q_obs_monthly_2016 <-  basinObsTS_SWE|>
+  dplyr::select(date, Qmm) |>
+  mutate(month = month(date), year = year(date)) |>
+  group_by(month, year) |>
+  summarise(Qmm = mean(Qmm, na.rm = TRUE)) |>
+  ungroup() |>
+  filter(year >= 2016) |>
+  group_by(month) |>
+  summarise(Qmm = mean(Qmm, na.rm = TRUE)) |>
+  ungroup()
+
+max_bar <- max(WaterInput_hydrograph$icemelt_snowmelt_liquidrain)
+max_line <- max(Q_obs_monthly_2016$Qmm)
+scale_factor <- max_line / max_bar
+
+
+# Base plot
+ggplot() +
+  geom_bar(data = WaterInput_hydrograph, aes(x = month, y = icemelt_snowmelt_liquidrain, fill = "Ice + Snow + P liquid"), stat = "identity", position = "dodge") +
+  geom_bar(data = WaterInput_hydrograph, aes(x = month, y = icemelt, fill = "Ice melt"), stat = "identity", position = "dodge") +
+  geom_line(data = Q_obs_monthly_2016, aes(x = month, y = Qmm / scale_factor, color = "Observation"), linewidth = 1) +
+  scale_fill_manual(values = c("Ice + Snow + P liquid" = "#2F4B7C", "Ice melt" = "lightblue")) +
+  scale_color_manual(values = c("Observation" = "black"))+
+  scale_x_continuous(breaks = seq(1, 12, by = 1)) +  # Set x-axis ticks
+  # scale_y_continuous(sec.axis = sec_axis(~ . * scale_factor, name = "Q [mm/d]")) + 
+  labs(title = "Toktogul Inflow",
+       y = "Melt and P liquid [mm/d]", 
+       x = "Month",
+       fill = "Source", color = "Observation") +
+  theme_minimal()
+
+
+
 ```
 
-Now we can run it on the calibration period and assess it.
 
-```{r, warning=FALSE, message=FALSE, eval=FALSE}
-## run on the calibration period
-OutputsModel_Cal <- RunModel_CemaNeigeGR4J(InputsModel = InputsModel,
-                                           RunOptions = RunOptions_Cal, 
-                                           Param = OutputsCalib$ParamFinalR)
+## 4.3 Model benchmarking
 
-## evaluation 
-OutputsCrit_Cal <- ErrorCrit(InputsCrit = InputsCrit_Cal, OutputsModel = OutputsModel_Cal)
+
+```{r fig.width=5, fig.height=4}
+# load the data from the linear regression model 
+pentad_linreg <- read_csv(paste0(dir_linreg, "/forecast_pentad_linreg.csv"), show_col_types = FALSE) |>
+  filter(code == Basin_code) |>
+  dplyr::select(date, forecasted_discharge, discharge_avg, delta) |>
+  mutate(
+    Qobs_pentad = discharge_avg / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24,  # in mm/d
+    Qsim_pentad = forecasted_discharge / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24,  # in mm/d
+    factor = delta / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24  # convert factor to mm/d
+  ) |>
+  rename(forecast_date = date) |>
+    filter(forecast_date >= as.Date("2015-12-31")) |>
+  dplyr::select(-discharge_avg, -delta, -forecasted_discharge)
+
+factor <- pentad_linreg |>
+  dplyr::select(forecast_date, factor, Qobs_pentad)
+
+
+
+# calculated the Forecast accuracy from the linear regression model out of the pentadal simulations
+FA_linreg<- get_accuracy_hyromet(pentad_linreg)
+
+# Calculate otu of daily simulations pentadal simulations and check if the forecast is within the acceptable range
+pentad_model <- get_pentadal_forecast_hydromet(runResults_df, factor)
+
+# Calculate the forecast accuracy over the pentad
+FA_model<- get_accuracy_hyromet(pentad_model)
+
+FA_totmean <- mean(FA_model$percentage_flag_1)
+print(paste0("The forecast accuracy of the model over all pentads is: ", FA_totmean))
+
+# Only consider month from April to September (vegetation period)
+FA_vegperiod <- FA_model |> 
+  mutate(month = month(pentad_dates)) |>
+  filter(month >= 4 & month <= 9) |>
+  summarise(percentage_flag_1 = mean(percentage_flag_1))
+print(paste0("The forecast accuracy of the model over the vegetation period is: ", FA_vegperiod$percentage_flag_1))
+
+
+# Visualization 
+ggplot() +
+  geom_line(data = FA_linreg, aes(x = pentad, y = percentage_flag_1, color = "Lin. Reg."), linewidth = 1) +
+  geom_line(data = FA_model, aes(x = pentad, y = percentage_flag_1, color = "Model"), linewidth = 1) +
+  scale_color_manual(values = c("Model" = "#FF5733", "Lin. Reg." = "black")) +
+  geom_vline(xintercept = 19, linetype = "dashed", color = "black") +
+  geom_vline(xintercept = 55, linetype = "dashed", color = "black") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  labs(
+    title = "Ala Archa",
+    x = 'Pentad',
+    y = 'Forecast Accuracy [-]',
+    color = "Legend"
+  ) +
+  theme_minimal()
 ```
 
-Find below the performance of the model over the calibration period.
+# 5. Data assimilation
+Discharge simulations are impacted by various sources of uncertainty, such as errors in meteorological inputs and suboptimal parameter estimates. Data assimilation (DA) combines measurements and model simulation to estimate the system state more accurately. The ensemble-based techniques allow to explicitly handle different sources of uncertainty and to quantify the unknown errors of both model states and observations. Uncertainties in meteorological forcings (e.g., precipitation and potential evapotranspiration) and model states (e.g., production store level, routing store level, and unit hydrographs) can be easily addressed by enabling specific perturbation procedures.
 
-```{r, warning=FALSE}
-str(OutputsCrit_Cal, max.level = 2)
+** Forcing perturbation **
+Probabilistic forecasts are generated by stochastically perturbing model forcings (P, PET) to account for uncertainty in meteorological inputs. Random perturbations are created using a first-order autoregressive model. The fractional error parameter defines the model spread and can be adjusted (eps). Within the perturbation of the forcing input (CreateInputsPert), we can choose, similar to CreateInputsModel, whether to use the obtained basin-specific lapse rate or not (Code_lapsrate). 
+
+## 5.1 Operational Setup
+
+## 5.2 Hindcasting
+
+```{r, eval=FALSE}
+# Input: startdate, enddate
+start_date <- "2015-12-31"
+end_date <- "2023-12-31"
+
+# 1. get the forecasts dates
+forecast_dates <- pentadal_days(start_date, end_date)
+
+# Initialize 
+NbMbr <- 200
+eps <- 0.65
+DaMethod <- "PF"
+StatePert <- c("Rout", "Prod", "UH1", "UH2")
+result_list <- list()
+
+# Inputsmodel 
+inputsModel <- airGR::CreateInputsModel(FUN_MOD   = RunModel_CemaNeigeGR4J_Glacier, 
+                                      DatesR    = basinObsTS_SWE$date,
+                                      Precip    = basinObsTS_SWE$Ptot, 
+                                      PotEvap   = basinObsTS_SWE$PET,
+                                      TempMean  = basinObsTS_SWE$Temp, 
+                                      HypsoData = Basin_Info$HypsoData,
+                                      ZInputs   = median(Basin_Info$HypsoData), 
+                                      Code_lapsrate = Basin_code)
+
+inputsPert <- CreateInputsPert(FUN_MOD = RunModel_CemaNeigeGR4J,
+                               DatesR = basinObsTS_SWE$date,
+                               Precip = basinObsTS_SWE$Ptot,
+                               PotEvap = basinObsTS_SWE$PET,
+                               TempMean  = basinObsTS_SWE$Temp,
+                               HypsoData = Basin_Info$HypsoData,
+                               ZInputs   = median(Basin_Info$HypsoData),
+                               NbMbr = NbMbr,
+                               Eps_Ptot = eps, Eps_PET = eps, 
+                               Code_lapsrate = Basin_code)
+
+for (i in 1:length(forecast_dates)) {
+
+  forecast_date <- forecast_dates[i]
+  print(paste0("Forecast date: ", forecast_date))
+  
+  pentad_start <- forecast_date + 1
+  pentad_end <- get_forecast_end(forecast_date)
+  pentad <- get_pentad(pentad_start)
+  
+
+  # 2. Run periods: end_DA = pentad_end because delete discharge measurements --> no resampling 
+  start_DA <- forecast_date - 180
+  end_OL <- start_DA - 1
+  start_Ol <- as.Date("2001-01-01")
+  
+  indRun_OL <- seq(
+    from = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(start_Ol, format = "%Y-%m-%d")),
+    to   = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(end_OL, format = "%Y-%m-%d")))
+  
+  indRun_DA <- seq(
+    from = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(start_DA, format = "%Y-%m-%d")),
+    to   = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(pentad_end, format = "%Y-%m-%d")))
+  
+  # 3. Open Loop run 
+  warmup <- c((indRun_OL[1]-1*365):(indRun_OL[1]-1))
+  
+  runOptions_OL <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                                      InputsModel = inputsModel,
+                                      IndPeriod_Run = indRun_OL,
+                                      IniStates        = NULL,
+                                      IniResLevels     = NULL,
+                                      IndPeriod_WarmUp = warmup,
+                                      MeanAnSolidPrecip = MeanAnSolidPrecip,
+                                      IsHyst = FALSE,
+                                      verbose = FALSE, 
+                                      RelIce = rel_ice)
+  
+  runResults_OL <- RunModel_CemaNeigeGR4J_Glacier(InputsModel   = inputsModel,
+                                                        RunOptions  = runOptions_OL,
+                                                        Param       = param)
+  initstate <- runResults_OL$StateEnd
+  
+  # 4. Data assimilation run 
+  basinObsTS_SWE_temp <- basinObsTS_SWE |>
+    mutate(Qmm = ifelse(date > as.Date(forecast_date, format = "%Y-%m-%d") & date <= pentad_end, NA, Qmm))
+  
+  RunOptions_DA <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                                       InputsModel = inputsModel,
+                                       IndPeriod_Run = 1L,
+                                       warning = FALSE, verbose = FALSE,
+                                       IniStates = initstate, 
+                                       RelIce = rel_ice)
+  
+
+  
+  
+  ResPF <- RunModel_DA(InputsModel = inputsModel,
+                       InputsPert = inputsPert,
+                       Qobs = basinObsTS_SWE_temp$Qmm,
+                       IndRun = indRun_DA,
+                       FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                       Param = param,
+                       DaMethod = DaMethod, 
+                       NbMbr = NbMbr, 
+                       StatePert = StatePert, 
+                       RunOptionsInitial = RunOptions_DA, 
+                       Rel_ice = rel_ice,
+                       Seed = 40)
+  
+  ResPF_df <- process_dataset(ResPF)
+  
+  result <- data.frame(Qsim_pentad = ResPF_df |>
+                         filter(date > as.Date(forecast_date)) |>
+                         summarise(Q_mean = mean(Q_median)) |>
+                         pull(Q_mean),
+                       forecast_date = forecast_date, 
+                       pentad_start = pentad_start,
+                       pentad = pentad)
+    
+  result_list[[i]] <- result
+}
+
+final_results <- do.call(rbind, result_list)
+
 ```
 
-Now we can run the model on the validation period and assess it.
 
-```{r, warning=FALSE, message=FALSE, eval=FALSE}
-## run on the validation period
-OutputsModel_Val <- RunModel_CemaNeigeGR4J(InputsModel = InputsModel,
-                                           RunOptions = RunOptions_Val, 
-                                           Param = OutputsCalib$ParamFinalR)
 
-## evaluation 
-OutputsCrit_Val <- ErrorCrit(InputsCrit = InputsCrit_Val, OutputsModel = OutputsModel_Val)
-```
-
-Find below the performance of the model over the validation period.
-
-```{r, warning=FALSE}
-str(OutputsCrit_Val, max.level = 2)
-```
-
-# Comparison with the performance of the initial CemaNeige version
-
-Here we use the same InputsModel object and calibration and validation periods. However, we have to redefine the way we run the model (`RunOptions` argument), calibrate and assess it (`InputsCrit` argument). The objective function is only based on KGE'(Q). Note how we set the `IsHyst` argument to `FALSE` in the `CreateRunOptions()` and the `CreateCalibOptions()` functions.
-
-```{r, warning=FALSE, eval=FALSE}
-## preparation of RunOptions object
-RunOptions_Cal_NoHyst <- CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                          InputsModel = InputsModel,
-                                          IndPeriod_Run = Ind_Cal,
-                                          IsHyst = FALSE)
-
-RunOptions_Val_NoHyst <- CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                          InputsModel = InputsModel, 
-                                          IndPeriod_Run = Ind_Val,
-                                          IsHyst = FALSE)
-
-InputsCrit_Cal_NoHyst <- CreateInputsCrit(FUN_CRIT = ErrorCrit_KGE2,
-                                          InputsModel = InputsModel,
-                                          RunOptions = RunOptions_Cal_NoHyst,
-                                          Obs = BasinObs$Qmm[Ind_Cal], VarObs = "Q")
-
-## preparation of CalibOptions object
-CalibOptions_NoHyst <- CreateCalibOptions(FUN_MOD = RunModel_CemaNeigeGR4J,
-                                          FUN_CALIB = Calibration_Michel,
-                                          IsHyst = FALSE)
-```
-
-We can now calibrate the model.
-
-```{r, warning=FALSE, eval=FALSE}
-## calibration
-OutputsCalib_NoHyst <- Calibration(InputsModel = InputsModel,
-                                   InputsCrit = InputsCrit_Cal_NoHyst,
-                                   RunOptions = RunOptions_Cal_NoHyst,
-                                   CalibOptions = CalibOptions_NoHyst,
-                                   FUN_MOD = RunModel_CemaNeigeGR4J,
-                                   FUN_CALIB = Calibration_Michel)
-```
-
-And run it over the calibration and validation periods.
-
-```{r, warning=FALSE, eval=FALSE}
-OutputsModel_Cal_NoHyst <- RunModel_CemaNeigeGR4J(InputsModel = InputsModel,
-                                                  RunOptions = RunOptions_Cal_NoHyst,  
-                                                  Param = OutputsCalib_NoHyst$ParamFinalR)
-
-OutputsModel_Val_NoHyst <- RunModel_CemaNeigeGR4J(InputsModel = InputsModel,
-                                                  RunOptions = RunOptions_Val_NoHyst, 
-                                                  Param = OutputsCalib_NoHyst$ParamFinalR)
-```
-
-In order to assess the model performance over the two periods, we will use the InputsCrit objects prepared before, which allow assessing also the performance in terms of snow simulation.
-
-```{r, warning=FALSE, message=FALSE, eval=FALSE}
-OutputsCrit_Cal_NoHyst <- ErrorCrit(InputsCrit = InputsCrit_Cal,
-                                    OutputsModel = OutputsModel_Cal_NoHyst)
-
-OutputsCrit_Val_NoHyst <- ErrorCrit(InputsCrit = InputsCrit_Val,
-                                    OutputsModel = OutputsModel_Val_NoHyst)
-```
-
-We can check the performance over the calibration and the validation period.
-
-```{r, warning=FALSE}
-str(OutputsCrit_Cal_NoHyst, max.level = 2)
-str(OutputsCrit_Val_NoHyst, max.level = 2)
-```
-
-We can see above that the performance of the initial model is slightly better than the new one over the calibration period in terms of discharge, but also that the new version calibrated using SCA provides better performance in terms of snow. However, over the validation period, we see that the discharge simulated by the new version brings better performance (in addition to improved SCA also). This shows the interests of the combined use of a linear hysteresis and of SCA data for calibration in CemaNeige.
-
-# References
