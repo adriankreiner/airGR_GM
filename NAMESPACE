@@ -70,7 +70,6 @@ export(TransfoParam_GR6J)
 export(TransfoParam_Lag)
 #export(.ErrorCrit)
 #export(.FeatModels)
-export(hello_airGR)
 
 
 #####################################
