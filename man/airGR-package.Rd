@@ -1,9 +1,9 @@
-\name{airGR-package}
-\alias{airGR}
-\alias{airGR-package}
+\name{airGRGM-package}
+\alias{airGRGM}
+\alias{airGRGM-package}
 \docType{package}
 \encoding{UTF-8}
-\title{\packageTitle{airGR}}
+\title{\packageTitle{airGRGM}}
 
 
 \description{
