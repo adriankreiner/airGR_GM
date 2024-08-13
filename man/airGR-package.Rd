@@ -1,13 +1,13 @@
-\name{airGRGM-package}
-\alias{airGRGM}
-\alias{airGRGM-package}
+\name{airGR-package}
+\alias{airGR}
+\alias{airGR-package}
 \docType{package}
 \encoding{UTF-8}
-\title{\packageTitle{airGRGM}}
+\title{\packageTitle{airGR}}
 
 
 \description{
-\packageDescription{airGRGM}
+\packageDescription{airGR}
 Each model core is coded in Fortran to ensure low computational time. The other package functions (i.e. mainly the calibration algorithm and the computation of the efficiency criteria) are coded in R. \cr\cr
 
 
