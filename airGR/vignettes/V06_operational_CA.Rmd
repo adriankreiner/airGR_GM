@@ -25,7 +25,7 @@ source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Centra
 source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/DA_PF.R")
 source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/Utils.R")
 source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/airGR/airgrdatassim/R/RunModel_DA.R")
-source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/05_Model/operational/functions_operational_AlaArcha.R")
+source("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/05_Model/operational/04_Function/functions_operational.R")
 
 ```
 
@@ -59,6 +59,7 @@ In this section, we are calculating basin-specific characteristics needed for th
 ```{r, warning=FALSE}
 # data directories
 data_dir <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/vignette"
+
 dir_CHELSA <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/forcing/15194_AlaArcha/CHELSA_V21"
 dir_linreg <- "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/pentadal_forecasting_system/hindcast_results/20240527"
 
@@ -92,14 +93,16 @@ Basin_code <- 15194
 river_name <- "AlaArcha"
 BasinArea_m2 <- as.numeric(st_area(basin_utm))
 
-basin_coords <- st_centroid(basin_latlon) |> st_coordinates()
-Basin_lat <- basin_coords[, "X"]
+basin_coords <- st_centroid(basin_latlon) %>% st_coordinates()
+# X (longitude) and Y (latitude) 
+Basin_lat <- basin_coords[, "Y"]
+Basin_lat_rad <- Basin_lat * pi / 180
 
 Basin_Info <- list(
   BasinCode = Basin_code,
   BasinName = river_name,
   BasinArea_m2 = BasinArea_m2,
-  BasinLat_rad = Basin_lat,
+  BasinLat_rad = Basin_lat_rad,
   HypsoData = as.numeric(HypsoData))
 
 ```
@@ -117,8 +120,8 @@ max_elev <- HypsoData[length(Basin_Info$HypsoData)]
 
 # HYPSOMETRIC CURVE
 # mask dem
-dem_masked <- dem_utm |> crop(basin_utm) |> mask(basin_utm)
-dem_masked_vec <- dem_masked[] |> na.omit()
+dem_masked <- dem_utm %>% crop(basin_utm) %>% mask(basin_utm)
+dem_masked_vec <- dem_masked[] %>% na.omit()
 
 # NEW
 h_range <- c(HypsoData[1], HypsoData[21], HypsoData[41], HypsoData[61], HypsoData[81], HypsoData[101])
@@ -127,11 +130,11 @@ dem_utm_class <- classify(dem_utm, h_range)
 # polygonize
 dem_utm_class_poly <- as.polygons(dem_utm_class)
 dem_utm_class_poly_sf <- st_as_sf(dem_utm_class_poly)
-dem_utm_class_poly_sf <- dem_utm_class_poly_sf |>
+dem_utm_class_poly_sf <- dem_utm_class_poly_sf %>%
     mutate(layer = seq(nrow(dem_utm_class_poly_sf)))
 # clip and rename
 hru_shp_clipped_utm <-
-    st_intersection(dem_utm_class_poly_sf, basin_utm) |>
+    st_intersection(dem_utm_class_poly_sf, basin_utm) %>%
     dplyr::select(layer, geometry)
 hru <- hru_shp_clipped_utm
 
@@ -143,20 +146,20 @@ hru$Z <- zonalStat_Z
 subbasin_names <- unique(hru$name)
 # loop through subbasin_names and add unique numbers to corresponding names
 for (idx in length(subbasin_names)) {
-  subbasin_sel <- hru |> dplyr::filter(name == subbasin_names[idx]) |> dplyr::arrange(Z)
+  subbasin_sel <- hru %>% dplyr::filter(name == subbasin_names[idx]) %>% dplyr::arrange(Z)
   subbasin_sel$hru_num <- (1:base::nrow(subbasin_sel))
   subbasin_sel$name <- paste0(subbasin_sel$name,'_',subbasin_sel$hru_num)
 
   if (idx == 1) {
     res_subbasins <- subbasin_sel
   } else {
-    res_subbasins <- res_subbasins |> dplyr::add_row(subbasin_sel)
+    res_subbasins <- res_subbasins %>% dplyr::add_row(subbasin_sel)
   }
 }
 
-hru_named_utm <- res_subbasins |> dplyr::select(-layer,-hru_num)
-hru_named_latlon <- hru_named_utm |> st_transform(crs = crs_project) |> st_make_valid()
-hru_named_utm |> plot()
+hru_named_utm <- res_subbasins %>% dplyr::select(-layer,-hru_num)
+hru_named_latlon <- hru_named_utm %>% st_transform(crs = crs_project) %>% st_make_valid()
+hru_named_utm %>% plot()
 
 
 ```
@@ -173,17 +176,17 @@ glacier_merged <- st_read(paste0(data_dir,"/15194_Glacier.shp"), quiet = TRUE) #
 glacier_utm <- st_transform(glacier_merged, utm42n)
 
 
-hru_named_utm <- hru_named_utm |>
+hru_named_utm <- hru_named_utm %>%
   mutate(Area_km2 = set_units(st_area(.), km^2))
 
 # Calculate glacier area in each elevation band
-glaciated_areas <- st_intersection(hru_named_utm, glacier_utm) |>
+glaciated_areas <- st_intersection(hru_named_utm, glacier_utm) %>%
   mutate(glaciated_area_km2 = set_units(st_area(.), km^2))
 
 # Aggregate glaciated areas by elevation band
-aggregated_data <- glaciated_areas |>
-  group_by(name) |>
-  summarise(glaciated_area_km2 = sum(glaciated_area_km2, na.rm = TRUE)) |>
+aggregated_data <- glaciated_areas %>%
+  group_by(name) %>%
+  summarise(glaciated_area_km2 = sum(glaciated_area_km2, na.rm = TRUE)) %>%
   rename(elev_band = name)
 
 glaciated_area_df <- data.frame(elev_band = hru_named_utm$name)
@@ -193,11 +196,11 @@ glaciated_area_df <- merge(glaciated_area_df, aggregated_data, by = "elev_band",
 glaciated_area_df[is.na(glaciated_area_df)] <- 0
 glaciated_area_df$glaciated_area_km2 <- set_units(glaciated_area_df$glaciated_area_km2, km^2)
 
-hru_named_utm_df <- as.data.frame(st_drop_geometry(hru_named_utm)) |>
+hru_named_utm_df <- as.data.frame(st_drop_geometry(hru_named_utm)) %>%
   select(elev_band = name, Area_km2)
 
-glaciated_area_df <- hru_named_utm_df |>
-  left_join(aggregated_data, by = "elev_band") |>
+glaciated_area_df <- hru_named_utm_df %>%
+  left_join(aggregated_data, by = "elev_band") %>%
   mutate(glaciated_area_km2 = replace_na(glaciated_area_km2, set_units(0, km^2)))
 
 
@@ -245,10 +248,10 @@ enddate <- startdate + years(1) - days(1)
 n_years <- end_year - start_year + 1
 
 extent <- sf::st_bbox(basin_latlon)
-extent <- c(extent$xmin, extent$xmax, extent$ymin, extent$ymax) |> unname()
+extent <- c(extent$xmin, extent$xmax, extent$ymin, extent$ymax) %>% unname()
 
 for (idx in seq(n_years)) {
-    year_name <- year(startdate) |> as.character()
+    year_name <- year(startdate) %>% as.character()
     # temperature tas (note: this is in Kelvin, we need to convert to Celsius.)
     tas <- Rchelsa::getChelsa('tas',extent = extent, startdate = startdate, enddate = enddate)
     tas <- tas - 273.15
@@ -296,8 +299,15 @@ get_T_lapsrate_daily <- function(file_path_raster, elevation_values) {
   return(slopes)
 }
 
+
 # load the downloaded CHELSA files 
 nc_files <- list.files(dir_CHELSA, pattern = ".nc$", full.names = TRUE)
+
+# filter defect years 
+defect_years <- c("2016", "2002")
+nc_files <- nc_files[!grepl(paste0(defect_years, collapse = "|"), nc_files)]
+
+# Temperature files 
 temp_files <- nc_files[str_detect(nc_files, "tas")]
 
 # Resample DEM to the same resolution as CHELSA V21 data.
@@ -314,45 +324,45 @@ dates <- seq(as.Date("2020-01-01"), as.Date("2020-12-31"), by="day")
 days <- format(dates, "%d")
 months <- format(dates, "%m")
 daily_stats <- data.frame(
-  Day = days,
-  Month = months,
-  Mean = daily_means
+  day = days,
+  month = months,
+  grad_Tmean = daily_means
 )
 
-# The temperature lapse rate is smoothed with a 30-day rolling mean
+# The temperature lapse rate is smoothed with a 30-Day rolling mean
 extend_and_smooth_data <- function(data, year = 2020, window_size = 30) {
-  data <- data |> mutate(Date = as.Date(paste(year, Month, Day, sep = "-")))
+  data <- data %>% mutate(Date = as.Date(paste(year, month, day, sep = "-")))
   
   # For Rolling mean 
-  December <- filter(data, Month == "12")
+  December <- filter(data, month == "12")
   December$Date <- December$Date %m-% years(1)
-  January <- filter(data, Month == "01")
+  January <- filter(data, month == "01")
   January$Date <- January$Date %m+% years(1)
   data_extended <- rbind(December, data, January)
 
   # Smooth the data
-  data_extended$Mean_smooth <- zoo::rollmean(data_extended$Mean, window_size, fill = NA, align = 'center')
+  data_extended$grad_Tmean_smooth <- zoo::rollmean(data_extended$grad_Tmean, window_size, fill = NA, align = 'center')
   # Filter out the extended parts
   data_final <- filter(data_extended, Date >= as.Date(paste(year, "01-01", sep = "-")), 
                        Date <= as.Date(paste(year, "12-31", sep = "-")))
   
   # Select and rename the necessary columns
-  data_final <- select(data_final, Day, Month, Mean_smooth) |>
-    rename(Mean = Mean_smooth) |>
-    mutate(Mean = round(Mean, 3)) |>  # round to 3 digits
-    mutate(Min = 0, Max = 0)  # Reset Min and Max as placeholders ( do not need for GR4J, GR6J model in the current implementation)
+  data_final <- select(data_final, day, month, grad_Tmean_smooth) %>%
+    rename(grad_Tmean = grad_Tmean_smooth) %>%
+    mutate(grad_Tmean = round(grad_Tmean, 3)) %>%  # round to 3 digits
+    mutate(grad_Tmin = 0, grad_Tmax = 0)  # Reset Min and Max as placeholders ( do not need for GR4J, GR6J model in the current implementation)
   return(data_final)
 }
 
 daily_stats_smoothed <- extend_and_smooth_data(daily_stats)
-# write.table(daily_stats_smoothing_finished, file = "../LapsrateT_daily_1990_2019_InflowToktogul_smoothing30.txt", row.names = FALSE, quote = FALSE, sep = ",", col.names = TRUE)
+# write.table(daily_stats_smoothed, file = paste0(data_dir,"/LapsrateT_daily_1990_2019.txt"), row.names = FALSE, quote = FALSE, sep = ",", col.names = TRUE)
 
 # Visualization 
-daily_stats_smoothing_plot <-daily_stats_smoothed |>
-  mutate(Date = as.Date(paste("2020", Month, Day, sep = "-"), format = "%Y-%m-%d"))
+daily_stats_smoothing_plot <-daily_stats_smoothed %>%
+  mutate(Date = as.Date(paste("2020", month, day, sep = "-"), format = "%Y-%m-%d"))
 
 ggplot() +
-  geom_line(data = daily_stats_smoothing_plot, aes(x = Date, y = Mean, colour = "Laps rate T"), color = "darkred", linewidth = 1.5) +
+  geom_line(data = daily_stats_smoothing_plot, aes(x = Date, y = grad_Tmean, colour = "Laps rate T"), color = "darkred", linewidth = 1.5) +
   labs(title = river_name,
        x = "Date",
        y = "Laps Rate [°C/100m]")+scale_x_date(date_breaks = "1 month", date_labels = "%b")+
@@ -360,7 +370,46 @@ ggplot() +
 
 ```
 
+
+## 2.3  Visuale X-Check of the temperature lapse rates 
+```{r}
+# ========================
+# Plotting the result 
+# Create a data frame from the list
+years <- seq(1990, length(lapsrate_t_years) + 1999)
+data <- do.call(rbind, lapply(seq_along(lapsrate_t_years), function(i) {
+  year_data <- data.frame(
+    day = seq_along(lapsrate_t_years[[i]]),
+    LapseRate = lapsrate_t_years[[i]],
+    Year = years[i]
+  )
+  return(year_data)
+}))
+
+data <- data %>%
+  filter(!Year %in% c(2016, 2002))
+
+# Plotting all years with lapse rates over days
+ggplot(data, aes(x = day, y = LapseRate, color = as.factor(Year), group = Year)) +
+  geom_line() +  # Draw lines
+  labs(title = "Daily T Lapse Rate by Year",
+       x = "Day of Year [-]",
+       y = "Lapse Rate T [°C/1000m]",
+       color = "Year") +
+  theme_minimal() +
+  scale_color_viridis_d() +  # Use a discrete viridis color scale
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        axis.text.x = element_text(size = 12),  # Increase x-axis tick label size and make it bold
+        axis.text.y = element_text(size = 12),
+        title = element_text(size = 16)) + 
+  guides(color = guide_legend(title = "Year",
+                              ncol = 2,  # Set the number of columns in the legend to two
+                              override.aes = list(size = 3)))
+```
 Now the temperature lapse rate data saved as a CSV file has to be included in the UtilsCemaNeige.R file with a name, for example: .GradT_Interpol_15194 (open for improvement). In the function DataAltiExtrapolation_Valery.R, add the temperature lapse rate. Then in the function CreateInputsModel.R, please provide the Code_lapseRate.
+
+
 
 ## 2.3 Calculate precipitation-specific lapse rate
 
@@ -393,36 +442,43 @@ get_P_lapsrate <- function(file_path, elevation_values) {
   return(temp_data)
 }
 
+Zthreshold <- 4000
+
+
 # Get the precipitation mean over the total period and sort it by elevation.
 pr_files <- nc_files[str_detect(nc_files, "pr")]
 lapsrate_p_data <- get_P_lapsrate(pr_files, elevation_values)
 lapsrate_p_data <- lapsrate_p_data[order(lapsrate_p_data$elevation),]
 
 # Do not consider values above 4000m
-P_elev_data_4000 <- lapsrate_p_data |>
-  filter(elevation <= 4000)
+P_elev_data_4000 <- lapsrate_p_data %>%
+  filter(elevation <= Zthreshold)
 
-P_elev_data_bigger4000 <- lapsrate_p_data |>
-  filter(elevation > 4000)
+P_elev_data_bigger4000 <- lapsrate_p_data %>%
+  filter(elevation > Zthreshold)
 
 Z0 <- median(Basin_Info$HypsoData)
 # getting P0 : Linear interpolation from closest values
-closest_points <- P_elev_data_4000 |> 
-  arrange(abs(elevation - Z0)) |> 
-  slice(1:2)
-P0 <- approx(closest_points$elevation, closest_points$value, xout = Z0)$y
+
+
+
+P_Z0 <- P_elev_data_4000 %>%
+  filter(between(elevation, Z0 - 50, Z0 + 50))
+P0 <- mean(P_Z0$value)
+
+
 
 model <- nls(value ~ P0 * exp(k * (elevation - Z0)), data = P_elev_data_4000, start = list(k = 0.00046))
 k_value <- coef(model)['k']
-
+save(k_value, file = "/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/code/Al_Archa_model/05_Model/operational/01_BasinInfo/16936/k_value.RData")
 
 # Visualization 
-elevation_seq <- seq(min(lapsrate_p_data$elevation),4000, length.out = 100)
+elevation_seq <- seq(min(lapsrate_p_data$elevation),Zthreshold, length.out = 100)
 predicted_values <- P0 * exp(k_value * (elevation_seq - Z0))
 plot_data <- data.frame(Elevation = elevation_seq, Predicted_Value = predicted_values)
 value_at_max_elevation <- plot_data$Predicted_Value[nrow(plot_data)]
 
-new_row <- data.frame(Elevation = 4700, Predicted_Value = value_at_max_elevation)
+new_row <- data.frame(Elevation = 5000, Predicted_Value = value_at_max_elevation)
 plot_data <- rbind(plot_data, new_row)
 
 
@@ -436,6 +492,7 @@ ggplot() +
     name = "",  # Legend title (blank if not needed)
     values = c("Cells > 4000m" = "#FF6347", "Cells < 4000m" = "#435A66", "P lapse rate" = "black")
   )
+
 ```
 
 The altitudinal correction factor can now be included in DataAltiExtrapolation_Valery.R and called with CreateInputsModel.R using the Code_lapseRate (= Basincode).
@@ -450,11 +507,11 @@ We are loading the discharge data for all of Kyrgyzstan and filtering it for a s
 
 Q_obs <- read_csv(paste0(data_dir,"/runoff_day.csv"), show_col_types = FALSE)
 
-Q_obs <- Q_obs |>
-  filter(code == Basin_code) |>
+Q_obs <- Q_obs %>%
+  filter(code == Basin_code) %>%
   mutate(
     date = as.Date(date), 
-    Qmm = discharge/Basin_Info$BasinArea_m2*1000*60*60*24) |>
+    Qmm = discharge/Basin_Info$BasinArea_m2*1000*60*60*24) %>%
   filter(date <= as.Date("2023-12-31"))
 
 ggplot(data = Q_obs, aes(x = date, y = Qmm)) +
@@ -471,21 +528,21 @@ ggplot(data = Q_obs, aes(x = date, y = Qmm)) +
 ERA5QM <- read_csv(paste0(data_dir,"/HRU00003_1979_2023_mapped.csv"), show_col_types = FALSE)
 ERA5QM <- ERA5QM[,-1]
 # wide format with the names then from the column as code and ine from the value
-ERA5QM_long <- ERA5QM |>
+ERA5QM_long <- ERA5QM %>%
   pivot_longer(
     cols = -date, 
     names_to = "code", 
-    values_to = "value") |>
+    values_to = "value") %>%
   filter(code %in% c(as.character(Basin_code),paste0(as.character(Basin_code),".1")))
 
 
 # wide format 
-ERA5QM_wide <- ERA5QM_long |>
-  pivot_wider(names_from = code, values_from = value) |>
+ERA5QM_wide <- ERA5QM_long %>%
+  pivot_wider(names_from = code, values_from = value) %>%
   rename(Temp = as.character(Basin_code),
-         Ptot = paste0(as.character(Basin_code),".1")) |>
-  left_join(Q_obs[, c("date", "Qmm")], by = "date") |>
-  filter(date >= as.Date("2000-01-01")) |>
+         Ptot = paste0(as.character(Basin_code),".1")) %>%
+  left_join(Q_obs[, c("date", "Qmm")], by = "date") %>%
+  filter(date >= as.Date("2000-01-01")) %>%
   arrange(date)
 
 PET_ERA5QM <- PE_Oudin(JD = as.POSIXlt(ERA5QM_wide$date)$yday +1,
@@ -506,30 +563,30 @@ We use daily gridded snow water equivalent (SWE) data from 2000 to 2023 with a s
 ```{r, eval = FALSE}
 swe_files <- list.files("/Volumes/Transcend/hydrosolutions Dropbox/Adrian Kreiner/SAPPHIRE_Central_Asia_Technical_Work/data/swe/SWE_from_Joel_version2024/spatial_swe", full.names = TRUE)
 
-swe_files <- swe_files[swe_files |> str_detect(".tif$")]
+swe_files <- swe_files[swe_files %>% str_detect(".tif$")]
 swe_files_sorted <- mixedsort(swe_files)
 
 
 number_of_days <- length(swe_files) # Subtract 1 because we start counting from the initial date
 
-date_vec <- seq(ymd("1999-09-01"), length.out = number_of_days, by = "day") |>
-  as_tibble() |>
+date_vec <- seq(ymd("1999-09-01"), length.out = number_of_days, by = "day") %>%
+  as_tibble() %>%
   rename(date = value)
 
 for (idx in seq(length(swe_files_sorted))) {
   swe_nc <- raster::brick(swe_files_sorted[idx]) # using raster package for the moment
   # extract data of 1 slice
-  swe_ts_idx <- swe_nc |> exact_extract(hru_named_utm, 'mean', force_df = TRUE)
-  swe_ts_idx_tbl <- swe_ts_idx |> as.matrix() |> t() |> as_tibble()
+  swe_ts_idx <- swe_nc %>% exact_extract(hru_named_utm, 'mean', force_df = TRUE)
+  swe_ts_idx_tbl <- swe_ts_idx %>% as.matrix() %>% t() %>% as_tibble()
   if (idx==1) {
     swe_Joel <- swe_ts_idx_tbl
   } else {
-    swe_Joel <- swe_Joel |> add_row(swe_ts_idx_tbl)
+    swe_Joel <- swe_Joel %>% add_row(swe_ts_idx_tbl)
   }
 }
 
 
-swe_Joel <- date_vec |> add_column(swe_Joel)
+swe_Joel <- date_vec %>% add_column(swe_Joel)
 
 write.csv(swe_Joel,paste0(data_dir,"/Swe_Joel_v2024_CemaNeige5Bands.csv"), row.names = FALSE)
 ```
@@ -560,6 +617,7 @@ base::load(paste0(data_dir,"/basinObsTS_SWE.RData"))
 summary(basinObsTS_SWE, digits = 2)
 MeanAnSolidPrecip <- c(361,361,361,361,361) 
 
+GradT <- read.table(file = paste0(data_dir,"/LapsrateT_daily_1990_2019.txt"), header = TRUE, sep = ",")
 
 inputsModel <- airGR::CreateInputsModel(FUN_MOD       = RunModel_CemaNeigeGR4J_Glacier, 
                                         DatesR        = basinObsTS_SWE$date,
@@ -569,8 +627,10 @@ inputsModel <- airGR::CreateInputsModel(FUN_MOD       = RunModel_CemaNeigeGR4J_G
                                         HypsoData     = Basin_Info$HypsoData,
                                         ZInputs       = median(Basin_Info$HypsoData),
                                         NLayers       = 5,
-                                        Code_lapsrate = Basin_Info$BasinCode, 
+                                        GradP        = k_value,
+                                        GradT        = GradT,
                                         verbose       = FALSE)
+
 
 ```
 
@@ -704,32 +764,32 @@ WaterInput_hydrograph <- tibble(
   date = as.Date(runResults_val$DatesR),
   icemelt = runResults_val$TotGlacMelt,
   icemelt_snowmelt_liquidrain = runResults_val$CatchMeltAndPliq
-) |>
-  mutate(month = month(date), year = year(date)) |>
-  group_by(month, year) |>
+) %>%
+  mutate(month = month(date), year = year(date)) %>%
+  group_by(month, year) %>%
   summarise(
     icemelt = mean(icemelt, na.rm = TRUE),
     icemelt_snowmelt_liquidrain = mean(icemelt_snowmelt_liquidrain, na.rm = TRUE)
-  ) |>
-  ungroup() |>
-  group_by(month) |>
+  ) %>%
+  ungroup() %>%
+  group_by(month) %>%
   summarise(
     icemelt = mean(icemelt, na.rm = TRUE),
     icemelt_snowmelt_liquidrain = mean(icemelt_snowmelt_liquidrain, na.rm = TRUE)
-  ) |>
+  ) %>%
   ungroup()
 
 IceMelt_percentage <- sum(WaterInput_hydrograph$icemelt) / sum(WaterInput_hydrograph$icemelt_snowmelt_liquidrain) * 100
 
-Q_obs_monthly_2016 <-  basinObsTS_SWE|>
-  dplyr::select(date, Qmm) |>
-  mutate(month = month(date), year = year(date)) |>
-  group_by(month, year) |>
-  summarise(Qmm = mean(Qmm, na.rm = TRUE)) |>
-  ungroup() |>
-  filter(year >= 2016) |>
-  group_by(month) |>
-  summarise(Qmm = mean(Qmm, na.rm = TRUE)) |>
+Q_obs_monthly_2016 <-  basinObsTS_SWE%>%
+  dplyr::select(date, Qmm) %>%
+  mutate(month = month(date), year = year(date)) %>%
+  group_by(month, year) %>%
+  summarise(Qmm = mean(Qmm, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(year >= 2016) %>%
+  group_by(month) %>%
+  summarise(Qmm = mean(Qmm, na.rm = TRUE)) %>%
   ungroup()
 
 max_bar <- max(WaterInput_hydrograph$icemelt_snowmelt_liquidrain)
@@ -762,19 +822,19 @@ ggplot() +
 
 ```{r fig.width=5, fig.height=4}
 # load the data from the linear regression model 
-pentad_linreg <- read_csv(paste0(dir_linreg, "/forecast_pentad_linreg.csv"), show_col_types = FALSE) |>
-  filter(code == Basin_code) |>
-  dplyr::select(date, forecasted_discharge, discharge_avg, delta) |>
+pentad_linreg <- read_csv(paste0(dir_linreg, "/forecast_pentad_linreg.csv"), show_col_types = FALSE) %>%
+  filter(code == Basin_code) %>%
+  dplyr::select(date, forecasted_discharge, discharge_avg, delta) %>%
   mutate(
     Qobs_pentad = discharge_avg / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24,  # in mm/d
     Qsim_pentad = forecasted_discharge / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24,  # in mm/d
     factor = delta / Basin_Info$BasinArea_m2 * 1000 * 60 * 60 * 24  # convert factor to mm/d
-  ) |>
-  rename(forecast_date = date) |>
-    filter(forecast_date >= as.Date("2015-12-31")) |>
+  ) %>%
+  rename(forecast_date = date) %>%
+    filter(forecast_date >= as.Date("2015-12-31")) %>%
   dplyr::select(-discharge_avg, -delta, -forecasted_discharge)
 
-factor <- pentad_linreg |>
+factor <- pentad_linreg %>%
   dplyr::select(forecast_date, factor, Qobs_pentad)
 
 
@@ -792,9 +852,9 @@ FA_totmean <- mean(FA_model$percentage_flag_1)
 print(paste0("The forecast accuracy of the model over all pentads is: ", FA_totmean))
 
 # Only consider month from April to September (vegetation period)
-FA_vegperiod <- FA_model |> 
-  mutate(month = month(pentad_dates)) |>
-  filter(month >= 4 & month <= 9) |>
+FA_vegperiod <- FA_model %>% 
+  mutate(month = month(pentad_dates)) %>%
+  filter(month >= 4 & month <= 9) %>%
   summarise(percentage_flag_1 = mean(percentage_flag_1))
 print(paste0("The forecast accuracy of the model over the vegetation period is: ", FA_vegperiod$percentage_flag_1))
 
@@ -840,16 +900,6 @@ eps <- 0.65
 DaMethod <- "PF"
 StatePert <- c("Rout", "Prod", "UH1", "UH2")
 result_list <- list()
-
-# Inputsmodel 
-inputsModel <- airGR::CreateInputsModel(FUN_MOD   = RunModel_CemaNeigeGR4J_Glacier, 
-                                      DatesR    = basinObsTS_SWE$date,
-                                      Precip    = basinObsTS_SWE$Ptot, 
-                                      PotEvap   = basinObsTS_SWE$PET,
-                                      TempMean  = basinObsTS_SWE$Temp, 
-                                      HypsoData = Basin_Info$HypsoData,
-                                      ZInputs   = median(Basin_Info$HypsoData), 
-                                      Code_lapsrate = Basin_code)
 
 inputsPert <- CreateInputsPert(FUN_MOD = RunModel_CemaNeigeGR4J,
                                DatesR = basinObsTS_SWE$date,
@@ -905,13 +955,15 @@ for (i in 1:length(forecast_dates)) {
   initstate <- runResults_OL$StateEnd
   
   # 4. Data assimilation run 
-  basinObsTS_SWE_temp <- basinObsTS_SWE |>
+  basinObsTS_SWE_temp <- basinObsTS_SWE %>%
     mutate(Qmm = ifelse(date > as.Date(forecast_date, format = "%Y-%m-%d") & date <= pentad_end, NA, Qmm))
   
   RunOptions_DA <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
                                        InputsModel = inputsModel,
                                        IndPeriod_Run = 1L,
-                                       warning = FALSE, verbose = FALSE,
+                                       warning = FALSE,
+                                       verbose = FALSE,
+                                       IndPeriod_WarmUp = 0L,
                                        IniStates = initstate, 
                                        RelIce = rel_ice)
   
@@ -933,9 +985,9 @@ for (i in 1:length(forecast_dates)) {
   
   ResPF_df <- process_dataset(ResPF)
   
-  result <- data.frame(Qsim_pentad = ResPF_df |>
-                         filter(date > as.Date(forecast_date)) |>
-                         summarise(Q_mean = mean(Q_median)) |>
+  result <- data.frame(Qsim_pentad = ResPF_df %>%
+                         filter(date > as.Date(forecast_date)) %>%
+                         summarise(Q_mean = mean(Q_median)) %>%
                          pull(Q_mean),
                        forecast_date = forecast_date, 
                        pentad_start = pentad_start,
@@ -945,6 +997,178 @@ for (i in 1:length(forecast_dates)) {
 }
 
 final_results <- do.call(rbind, result_list)
+
+```
+
+
+# cheating: 
+
+
+```{r, eval=FALSE}
+# Input: startdate, enddate
+start_date <- as.Date("2015-12-31")
+end_date <- as.Date("2023-12-25")
+
+# 1. get the forecasts dates
+# needed because want also to have the last date 
+end_date_temp <- end_date + 1
+forecast_dates <- pentadal_days(start_date, end_date)
+
+# Initialize 
+NbMbr <- 200
+eps <- 0.65
+DaMethod <- "PF"
+StatePert <- c("Rout", "Prod", "UH1", "UH2")
+result_list <- list()
+
+for (i in 1:(length(forecast_dates)-1)) {
+  forecast_date <- forecast_dates[i]
+  print(paste0("Forecast date: ", forecast_date))
+  
+  pentad_start <- forecast_date + 1
+  pentad_end <- get_forecast_end(forecast_date)
+  pentad <- get_pentad(pentad_start)
+  
+
+  # 2. Run periods: end_DA = pentad_end because delete discharge measurements --> no resampling 
+  start_DA <- forecast_date 
+  end_OL <- start_DA - 1
+  start_Ol <- as.Date("2001-01-01")
+  
+  indRun_OL <- seq(
+    from = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(start_Ol, format = "%Y-%m-%d")),
+    to   = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(end_OL, format = "%Y-%m-%d")))
+  
+  indRun_DA <- seq(
+    from = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(start_DA, format = "%Y-%m-%d")),
+    to   = which(format(basinObsTS_SWE$date, format = "%Y-%m-%d") == format(pentad_end, format = "%Y-%m-%d")))
+  
+  # 3. Open Loop run 
+  warmup <- c((indRun_OL[1]-1*365):(indRun_OL[1]-1))
+  
+  runOptions_OL <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                                      InputsModel = inputsModel,
+                                      IndPeriod_Run = indRun_OL,
+                                      IniStates        = NULL,
+                                      IniResLevels     = NULL,
+                                      IndPeriod_WarmUp = warmup,
+                                      MeanAnSolidPrecip = MeanAnSolidPrecip,
+                                      IsHyst = FALSE,
+                                      verbose = FALSE, 
+                                      RelIce = rel_ice)
+  
+  runResults_OL <- RunModel_CemaNeigeGR4J_Glacier(InputsModel   = inputsModel,
+                                                        RunOptions  = runOptions_OL,
+                                                        Param       = param)
+  initstate <- runResults_OL$StateEnd
+  
+  Qsim_end <- tibble(date = as.Date(runResults_OL$DatesR[length(runResults_OL$Qsim)]),
+                     Qsim_end = runResults_OL$Qsim[length(runResults_OL$Qsim)]) %>%
+    left_join(basinObsTS_SWE %>% dplyr::select(date, Qmm), by = "date") %>%
+    mutate(diff = Qsim_end - Qmm)
+
+  
+  
+
+    runOptions_cheating <- airGR::CreateRunOptions(FUN_MOD = RunModel_CemaNeigeGR4J_Glacier,
+                                    InputsModel = inputsModel,
+                                    IndPeriod_Run = indRun_DA,
+                                    IniStates = initstate, 
+                                    IniResLevels     = NULL,
+                                    IndPeriod_WarmUp = 0L,
+                                    MeanAnSolidPrecip = MeanAnSolidPrecip,
+                                    IsHyst = FALSE,
+                                    verbose = FALSE, 
+                                    RelIce = rel_ice)
+
+  runResults_cheating <- RunModel_CemaNeigeGR4J_Glacier(InputsModel   = inputsModel,
+                                                        RunOptions  = runOptions_cheating,
+                                                        Param       = param)
+  
+  runResults_cheating_df <- tibble(date = as.Date(runResults_cheating$DatesR),
+                                         Qsim = runResults_cheating$Qsim,
+                                   Qsim_corrected = runResults_cheating$Qsim - Qsim_end$diff)
+  
+  result_cheating <- runResults_cheating_df %>%
+    summarise(Qsim_corrected = mean(Qsim_corrected), 
+              Qsim = mean(Qsim)) %>%
+    mutate(forecast_date = forecast_date, 
+           pentad_start = pentad_start,
+           pentad = pentad)
+
+
+    
+  result_list[[i]] <- result_cheating
+}
+
+final_results <- do.call(rbind, result_list)
+
+```
+
+
+
+```{r}
+final_results_df <- final_results %>%
+  left_join(factor, by = "forecast_date")
+final_results_df$flag <- ifelse((final_results_df$Qsim_corrected<= (final_results_df$Qobs_pentad + final_results_df$factor)) & (final_results_df$Qsim_corrected >= (final_results_df$Qobs_pentad - final_results_df$factor)), 1, 0)
+
+
+FA <- final_results_df %>%
+  group_by(pentad) %>%
+  summarize(count_flag_1 = sum(flag == 1, na.rm = TRUE), # Count of flag=1 for each pentad
+            # total_entries = n(), # Total number of entries for each pentad
+            total_entries = sum(!is.na(flag)), # Total number of non-NA entries for each pentad
+            percentage_flag_1 = (count_flag_1 / total_entries)) 
+
+
+ggplot() + 
+  geom_line(data = FA, aes(x = pentad, y = percentage_flag_1))+
+  geom_line(data = FA_linreg, aes(x = pentad, y = percentage_flag_1))+
+  geom_line(data = FA_model, aes(x = pentad, y = percentage_flag_1))
+  
+
+combined_data <- tibble(pentad_dates = FA_linreg$pentad_dates, 
+                        pentad = FA_linreg$pentad,
+                        linreg = FA_linreg$percentage_flag_1,
+                        model = FA_model$percentage_flag_1,
+                        Fake = FA$percentage_flag_1)
+
+
+start_april <- as.Date("2016-04-01")
+start_oct <- as.Date("2016-10-01")
+ggplot() +
+
+  
+  
+  geom_line(data = combined_data, aes(x = pentad_dates, y = linreg, color = "Lin. reg. latest version"), linewidth = 1) +
+  geom_line(data = combined_data, aes(x = pentad_dates, y = Fake, color = "FAKE"),linewidth = 1) +
+  geom_line(data = combined_data, aes(x = pentad_dates, y = model, color = "Model without DA"), linewidth = 1) +
+  
+  scale_color_manual(values = c("Model without DA" = "#52A073", "FAKE" = "#FF5733", "Lin. reg. latest version" = "black")) +
+  geom_vline(xintercept = as.numeric(start_april), linetype = "dashed", color = "black")+
+  geom_vline(xintercept = as.numeric(start_oct), linetype = "dashed", color = "black") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.2)) +
+  scale_x_date(date_labels = "%b %d", date_breaks = "1 months") +
+   labs( title = "Ala Archa",
+    x = 'Date', 
+       y = 'Forecast Accuracy [-]', 
+       color = "Legend", 
+       fill = "Legend")+
+  theme_minimal() +
+  theme(panel.border = element_rect(colour = "black", fill = NA, size = 1),
+        legend.position = c(0.725, 0.17),
+        legend.justification = c(1, 1),
+        axis.title.x = element_text(size = 10),
+        legend.title = element_blank(),
+        axis.title.y = element_text(size = 10),
+        axis.text = element_text(size = 8),
+        plot.title = element_text(size = 12),
+        panel.grid.minor.x = element_blank(),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        legend.key = element_blank(), 
+        legend.box.margin = margin(5, 5, 5, 5))+
+  guides(color = guide_legend(ncol = 4))
+ 
 
 ```
 

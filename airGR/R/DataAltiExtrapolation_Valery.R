@@ -3,29 +3,17 @@ DataAltiExtrapolation_Valery <- function(DatesR,
                                          TempMean, TempMin = NULL, TempMax = NULL,
                                          ZInputs,  HypsoData, NLayers,
                                          verbose = TRUE, 
-                                         Code_lapsrate = NULL) {
+                                         GradP = NULL, 
+                                         GradT = NULL, 
+                                         Zthreshold = 4000) {
 
   ##Altitudinal_gradient_functions_______________________________________________________________
   # ##unique_gradient_for_precipitation
   
-  # if(is.null(Code_lapsrate)){
-  #   GradP <- 0.00041 #value from Valery PhD thesis page 126
-  # } else if(Code_lapsrate == 15194){
-  #   GradP <- 0.0002424229 #value from CHELSA data for Ala Archa
-  # } else if(Code_lapsrate == 16936){
-  #   GradP <-0.00043 #value from CHELSA data for Inflow Toktogul (noch anpassen)
-  # } 
-  
-  if (is.null(Code_lapsrate)) {
+  if (is.null(GradP)) {
     GradP <- 0.00041 # value from Valery PhD thesis page 126
   } else {
-    lapsrastesP <- .LapseRateP
-    
-    if (!(Code_lapsrate %in% lapsrastesP$Code)) {
-      stop("Error: Code_lapsrate not found in the Code column of lapsrastesP.")
-    } else {
-      GradP <- lapsrastesP$GradP[lapsrastesP$Code == Code_lapsrate]
-    }
+    GradP <- GradP
   }
 
 
@@ -113,13 +101,12 @@ DataAltiExtrapolation_Valery <- function(DatesR,
     }
   } else {
     ##Elevation_gradients_for_daily_mean_min_and_max_temperature
-    if(is.null(Code_lapsrate)){
+    if(is.null(GradT)){
       GradT <- .GradT_Valery2010
-    } else if(Code_lapsrate == 15194){
-      GradT <- .GradT_Interpol_15194
-    } else if(Code_lapsrate == 16936){
-    GradT <- .GradT_Interpol_16936
+    } else {
+      GradT <- GradT
     }
+  
     
     iday <- match(format(DatesR, format = "%d%m"),
                   sprintf("%02i%02i", GradT[, "day"], GradT[, "month"]))
