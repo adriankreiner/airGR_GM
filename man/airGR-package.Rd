@@ -7,7 +7,7 @@
 
 
 \description{
-\packageDescription{airGR}
+\packageDescription{airGRGM}
 Each model core is coded in Fortran to ensure low computational time. The other package functions (i.e. mainly the calibration algorithm and the computation of the efficiency criteria) are coded in R. \cr\cr
 
 
