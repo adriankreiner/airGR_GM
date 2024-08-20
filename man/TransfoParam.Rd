@@ -39,6 +39,7 @@ TransfoParam_GR4H(ParamIn, Direction)
 TransfoParam_GR5H(ParamIn, Direction)
 TransfoParam_CemaNeige(ParamIn, Direction)
 TransfoParam_CemaNeigeHyst(ParamIn, Direction)
+TransfoParam_Glacier(ParamIn, Direction)
 }
 
 
