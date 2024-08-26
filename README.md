@@ -83,15 +83,21 @@ changes to existing functions, such as:
 
 -   `UtilsRunModel.R`: Get ice melt and SWE as output.
 
--   `RunModel.R`: Minor changes regarding parameter
+-   `RunModel.R`: Minor changes regarding parameter.
 
 
-### 2. Lapse rate for temperature and precipitaiton
+### 2. Lapse rate for temperature and precipitation
 
 
+The modification for the lapse rate for temperature and precipitation includes changes to existing functions, such as:
+
+
+
+- `DataAltiExtrapolation_Valery`: Possibility to add custom daily temperature lapse rates and altitudinal correction factors for precipitation. 
+
+- `CreateInputsModel`: Possibility to add custom daily temperature lapse rates and altitudinal correction factors for precipitation which is used in `DataAltiExtrapolation_Valery`.
 
 ## Installation
-
 ### Prerequisites
 
 Before installing airGR_GM, ensure you have the following prerequisites
