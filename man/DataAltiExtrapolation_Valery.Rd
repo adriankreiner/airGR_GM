@@ -16,7 +16,8 @@ Function which extrapolates the precipitation and air temperature series for dif
 \usage{
 DataAltiExtrapolation_Valery(DatesR, Precip, PrecipScale = TRUE,
                              TempMean, TempMin = NULL, TempMax = NULL,
-                             ZInputs, HypsoData, NLayers, verbose = TRUE)
+                             ZInputs, HypsoData, NLayers, verbose = TRUE, 
+                             GradP = NULL, GradT = NULL, Zthreshold = 4000)
 }
 
 
@@ -40,6 +41,13 @@ DataAltiExtrapolation_Valery(DatesR, Precip, PrecipScale = TRUE,
 \item{NLayers}{[numeric] integer giving the number of elevation layers requested [-]}
 
 \item{verbose}{(optional) [boolean] boolean indicating if the function is run in verbose mode or not, default = \code{TRUE}}
+
+\item{GradP}{[integer] The altitudinal correction factor for precipitation. See deatils}
+
+\item{GradT}{[data frame] The daily temperature lapse rate in degrees Celsius per 100 meters. The data frame includes columns for the day (day) and month (month) of the year, along with the mean (grad_Tmean), minimum (grad_Tmin), and maximum (grad_Tmax) temperature lapse rates for each day in in Celsius per 100m.}
+
+\item{Zthreshold}{[integer] The threshold above precipitation is assumed to be constant with elevation.}
+
 }
 \value{
 list containing the extrapolated series of precip. and air temp. on each elevation layer
@@ -58,7 +66,13 @@ list containing the extrapolated series of precip. and air temp. on each elevati
 Elevation layers of equal surface are created the 101 elevation quantiles (\code{HypsoData})
 and the number requested elevation layers (\code{NLayers}). \cr
 Forcing data (precipitation and air temperature) are extrapolated using gradients from Valery (2010).
-(e.g. gradP = 0.0004 [m-1] for France and gradT = 0.434 [°C/100m] for January, 1st). \cr
+(e.g. gradP = 0.0004 [m-1] for France and gradT = 0.434 [°C/100m] for January, 1st).
+With the optional GradT the daily temperature gradient can be given as input. \cr
+The extrapolation of precipitation for a given elevation layer i is performed using the following formula:
+\deqn{P_i = P_0 \exp(\beta_{\text{Altitude}} (Z_i - Z_0))} \cr
+The altitudinal correction factor for precipitation can be input as GradP or default to 0.00041 [m-1]. \cr
+Above the Zthreshold precipitaiton is assumed to be constant. \cr
+
 This function is used by the \code{\link{CreateInputsModel}} function.
 }
 

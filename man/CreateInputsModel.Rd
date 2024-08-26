@@ -19,8 +19,8 @@ CreateInputsModel(FUN_MOD, DatesR, Precip, PrecipScale = TRUE, PotEvap = NULL,
                   TempMean = NULL, TempMin = NULL, TempMax = NULL,
                   ZInputs = NULL, HypsoData = NULL, NLayers = 5,
                   Qupstream = NULL, LengthHydro = NULL, BasinAreas = NULL,
-                  QupstrUnit = "mm", verbose = TRUE, 
-                  Code_lapsrate = NULL)
+                  QupstrUnit = "mm", verbose = TRUE,
+                  GradP = NULL, GradT = NULL, Zthreshold = 4000)
 
 \method{[}{InputsModel}(x, i)
 }
@@ -63,9 +63,14 @@ CreateInputsModel(FUN_MOD, DatesR, Precip, PrecipScale = TRUE, PotEvap = NULL,
 
 \item{i}{[integer] of the indices to subset a time series or [character] names of the elements to extract}
 
-\item{Code_lapsrate}{[integer] Basin code to use basin specific lapse rates. If not specified the lapse reates defined by Valerié et al., 2014 are used.}
+\item{GradP}{[integer] The altitudinal correction factor for precipitation used in \code{\link{DataAltiExtrapolation_Valery}}. See deatils}
+
+\item{GradT}{[data frame] The daily temperature lapse rate in degrees Celsius per 100 meters. The data frame includes columns for the day (day) and month (month) of the year, along with the mean (grad_Tmean), minimum (grad_Tmin), and maximum (grad_Tmax) temperature lapse rates for each day in in Celsius per 100m.}
+
+\item{Zthreshold}{[integer] The threshold above precipitation is assumed to be constant with elevation. See \code{\link{DataAltiExtrapolation_Valery}}}
 
 }
+
 
 
 \value{
@@ -91,6 +96,8 @@ The order of the columns or of the items should be consistent for all these para
 \code{BasinAreas} should contain one extra information (stored in the last item) which is the area of the downstream sub-catchment.
 Upstream flows that are not related to a sub-catchment such as release or withdraw spots are identified by an area equal to \code{NA}, and if \code{unit="mm"} the upstream flow must be expressed in m3/time step instead of mm/time step which is not possible in absence of a related area.
 Please note that the use of SD model requires to use the \code{\link{RunModel}} function instead of \code{\link{RunModel_GR4J}} or the other \code{RunModel_*} functions.
+
+If there is no GradP or GradT or Zthreshold then the default values are used implemented in DataAltiExtrapolation_Valery. 
 }
 
 \examples{
