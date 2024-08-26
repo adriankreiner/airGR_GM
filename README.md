@@ -119,10 +119,10 @@ your terminal:
 
 macOS: Open your terminal and run the following commands:
 
-1.  Install gfortran using Homebrew:
+1.  Install gcc which includes gfortran using Homebrew:
 
 ``` r
-brew install gfortran
+brew install gcc
 ```
 You can check the installation by running:
 
@@ -131,21 +131,47 @@ gfortran --version
 ```
 and find the path where gfortran is installed by running:
 
+
+
+2. Set up the Makevars file for R to find the C and Fortran libraries:
+
+2.1 Find the Path for the Fortran Compiler (gfortran):
 ``` r
 which gfortran
 ```
+This should return something like:
+``` r
+/opt/homebrew/bin/gfortran
+```
+2.2 Find the Path for the Fortran Libraries:
 
-2. Set up the Makevars file for R to find the C and Fortran libraries:
+First, identify the specific version of GCC installed by running:
+``` r
+brew --prefix gcc
+```
+Then, use the following command to get the path to the Fortran libraries
+``` r
+echo $(brew --prefix gcc)/lib/gcc/$(gcc-14 -dumpversion)
+```
+This should return a path similar to:
+``` r
+/opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/14/
+````
+2.3 Create a Makevars file in your R directory:
+
 
 ``` r
 nano ~/.R/Makevars
 ```
 
-Add the following lines to your Makevars file to ensure R finds the necessary compilers and libraries:
+Add the following lines to your Makevars file to ensure R finds the necessary compilers and libraries (The following are exmaple paths)
 
+
+``` r
 FC = /opt/homebrew/Cellar/gcc/14.1.0/bin/gfortran
 F77 = /opt/homebrew/Cellar/gcc/14.1.0/bin/gfortran
 FLIBS = -L/opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/14/ -lgfortran -lquadmath -lm
+```
 
 Save the file. 
 
