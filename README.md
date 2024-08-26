@@ -25,11 +25,11 @@ are built upon the functions RunModel_CemaNeigeGR4J and
 RunModel_CemaNeigeGR6J from the original airGR package. The package
 works in combination with the modified [airGRdatassim
 package](https://github.com/hydrosolutions/airgrdatassim), which also
-allows these adjusted conceptual models to run with data assimilation.
+allows these adjusted conceptual models to run with data assimilation. In this development, a glacier module is added to the RunModel_CemaNeigeGR4J and RunModel_CemaNeigeGR6J.
 
 <img src="./man/figures/diagramGR46JGlacier-EN.png" width="80%"/>
 
-In this development, a glacier module is added.
+
 
 SWE is modeled within the CemaNeige compartment and provided as input to
 the glacier module. Ice melt occurs only when both temperature and SWE
@@ -81,10 +81,14 @@ changes to existing functions, such as:
 -   `UtilsCalibOptions.R`: Include the glacier module for the
     calibration.
 
--   `UtilsRunModel.R`: Include SWE in the Output of the model needed in
-    the glacier module.
+-   `UtilsRunModel.R`: Get ice melt and SWE as output.
 
 -   `RunModel.R`: Minor changes regarding parameter
+
+
+### 2. Lapse rate for temperature and precipitaiton
+
+
 
 ## Installation
 
@@ -130,7 +134,7 @@ and find the path where gfortran is installed by running:
 
 #### 2.2 Set up the Makevars file for R to find the C and Fortran libraries:
 
-1 Find the Path for the Fortran Compiler (gfortran):
+**1. Find the Path for the Fortran Compiler (gfortran):**
 ``` r
 which gfortran
 ```
@@ -138,9 +142,9 @@ This should return something like:
 ``` r
 /opt/homebrew/bin/gfortran
 ```
-2 Find the Path for the Fortran Libraries:
+**2. Find the Path for the Fortran Libraries:**
 
-First, identify the specific version of GCC installed by running:
+Identify the specific version of GCC installed by running:
 ``` r
 brew --prefix gcc
 ```
@@ -152,7 +156,7 @@ This should return a path similar to:
 ``` r
 /opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/14/
 ````
-3 Create a Makevars file in your R directory:
+**3. Create a Makevars file in your R directory:**
 
 ``` r
 nano ~/.R/Makevars
@@ -171,8 +175,6 @@ Save the file.
 ### 3. Install airGR_GM
 
 With all dependencies installed, you can now install the airGR_GM package using the devtools package in R. First, ensure that devtools is installed:
-
-
 
 ``` r
 # install.packages("devtools")
