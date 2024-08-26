@@ -2,7 +2,7 @@ Package: airGR
 Type: Package
 Title: Modified airGR to Include Glacier Ablation
 Version: 1.0.0
-Date: 2023-10-25
+Date: 2024-08-26
 Author: Adrian Kreiner
 Depends: R (>= 4.1.1)
 Imports: graphics, grDevices, stats, utils

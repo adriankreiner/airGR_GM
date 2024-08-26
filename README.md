@@ -12,9 +12,11 @@ INRAE-Antony (HYCAR Research Unit, France), includes models like GR4H,
 GR5H, GR4J, GR5J, GR6J, GR2M, GR1A, and the snow accumulation and melt
 model (CemaNeige).
 
-This modification includes mainly two changes: 1. The introduction of a
-glacier module 2. The ability to adjust the temperature and
-precipitation lapse rates.
+This modification includes mainly two changes: 
+
+1. The introduction of aglacier module 
+
+2. The ability to adjust the temperature and precipitation lapse rates.
 
 ### 1. Glacier Module
 
@@ -99,13 +101,13 @@ The modification for the lapse rate for temperature and precipitation includes c
 ## Installation
 ### Prerequisites
 
-Before installing airGR_GM, ensure you have the following prerequisites
-installed on your system:
+Before installing airGR_GM, ensure you have the following prerequisites installed on your system:
 
-R: Version 4.1.1 or higher RTools (Windows only): Required for building
-packages from source Homebrew (macOS only): 
+- **R**: Version 4.1.1 or higher.
 
-**Note** that **Windows** users require a working installation of [RTools](https://cran.r-project.org/bin/windows/Rtools/)
+- [RTools](https://cran.r-project.org/bin/windows/Rtools/) (Windows only): Required for building packages from source.
+
+- **Homebrew** (macOS only): Required for managing installations like the Fortran compiler.
 
 ### 1. Install Homebrew (macOS only)
 
@@ -164,7 +166,7 @@ This should return a path similar to:
 nano ~/.R/Makevars
 ```
 
-Add the following lines to your Makevars file to ensure R finds the necessary compilers and libraries (The following are exmaple paths)
+Add the paths obtained from above to your Makevars file to ensure R finds the necessary compilers and libraries (The following are example paths)
 
 ``` r
 FC = /opt/homebrew/Cellar/gcc/14.1.0/bin/gfortran
@@ -174,7 +176,7 @@ FLIBS = -L/opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/14/ -lgfortran -lquadmath -lm
 
 Save the file. 
 
-### 3. Install airGR_GM
+### 4. Install airGR_GM
 
 With all dependencies installed, you can now install the airGR_GM package using the devtools package in R. First, ensure that devtools is installed:
 
@@ -182,6 +184,13 @@ With all dependencies installed, you can now install the airGR_GM package using 
 # install.packages("devtools")
 devtools::install_github("hydrosolutions/airGR_GM")
 ```
+
+Load the library:
+
+``` r
+library(airGR)
+```
+Please pay attention: the library is called `airGR` and not `airGR_GM`.
 
 
 
