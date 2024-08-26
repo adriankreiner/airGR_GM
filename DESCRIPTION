@@ -15,4 +15,3 @@ NeedsCompilation: yes
 Encoding: UTF-8
 VignetteBuilder: knitr
 RoxygenNote: 7.3.0
-Maintainer: Adrian Kreiner
