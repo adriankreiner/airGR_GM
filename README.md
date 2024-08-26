@@ -1,7 +1,6 @@
 
-# airGR_GM
+# airGR_GM: modified airGR package with glacier module
 
-GRXJ + CemaNeige + Glacier Model
 
 ## Summary
 
