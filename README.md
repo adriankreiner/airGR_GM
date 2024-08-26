@@ -119,7 +119,7 @@ your terminal:
 
 macOS: Open your terminal and run the following commands:
 
-1.  Install gcc which includes gfortran using Homebrew:
+#### 2.1  Install gcc which includes gfortran using Homebrew:
 
 ``` r
 brew install gcc
@@ -133,9 +133,9 @@ and find the path where gfortran is installed by running:
 
 
 
-2. Set up the Makevars file for R to find the C and Fortran libraries:
+#### 2.2 Set up the Makevars file for R to find the C and Fortran libraries:
 
-  2.1 Find the Path for the Fortran Compiler (gfortran):
+1 Find the Path for the Fortran Compiler (gfortran):
 ``` r
 which gfortran
 ```
@@ -143,7 +143,7 @@ This should return something like:
 ``` r
 /opt/homebrew/bin/gfortran
 ```
-2.2 Find the Path for the Fortran Libraries:
+2 Find the Path for the Fortran Libraries:
 
 First, identify the specific version of GCC installed by running:
 ``` r
@@ -157,7 +157,7 @@ This should return a path similar to:
 ``` r
 /opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/14/
 ````
-2.3 Create a Makevars file in your R directory:
+3 Create a Makevars file in your R directory:
 
 ``` r
 nano ~/.R/Makevars
