@@ -135,7 +135,7 @@ and find the path where gfortran is installed by running:
 
 2. Set up the Makevars file for R to find the C and Fortran libraries:
 
-2.1 Find the Path for the Fortran Compiler (gfortran):
+  2.1 Find the Path for the Fortran Compiler (gfortran):
 ``` r
 which gfortran
 ```
@@ -159,13 +159,11 @@ This should return a path similar to:
 ````
 2.3 Create a Makevars file in your R directory:
 
-
 ``` r
 nano ~/.R/Makevars
 ```
 
 Add the following lines to your Makevars file to ensure R finds the necessary compilers and libraries (The following are exmaple paths)
-
 
 ``` r
 FC = /opt/homebrew/Cellar/gcc/14.1.0/bin/gfortran
@@ -178,3 +176,14 @@ Save the file.
 ### 3. Install airGR_GM
 
 With all dependencies installed, you can now install the airGR_GM package using the devtools package in R. First, ensure that devtools is installed:
+
+
+
+``` r
+# install.packages("devtools")
+devtools::install_github("hydrosolutions/airGR_GM")
+```
+
+
+
+
