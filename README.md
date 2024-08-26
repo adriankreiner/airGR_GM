@@ -104,12 +104,9 @@ Before installing airGR_GM, ensure you have the following prerequisites
 installed on your system:
 
 R: Version 4.1.1 or higher RTools (Windows only): Required for building
-packages from source Homebrew (macOS only): A package manager for macOS
-Fortran Compiler: gfortran must be installed and properly linked The
-package requires R version \>= 4.1.1
+packages from source Homebrew (macOS only): 
 
-**Note** that **Windows** users require a working installation of \<a
-href="<https://cran.r-project.org/bin/windows/Rtools/>"
+**Note** that **Windows** users require a working installation of [RTools](https://cran.r-project.org/bin/windows/Rtools/)
 
 ### 1. Install Homebrew (macOS only)
 
